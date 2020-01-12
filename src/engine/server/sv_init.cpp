@@ -614,7 +614,8 @@ void SV_Init()
 	Cvar_Get( "pakname", "", CVAR_SERVERINFO | CVAR_ROM );
 	Cvar_Get( "layout", "", CVAR_SERVERINFO | CVAR_ROM );
 	Cvar_Get( "g_layouts", "", 0 ); // FIXME
-	sv_hostname = Cvar_Get( "sv_hostname", UNNAMED_SERVER, CVAR_SERVERINFO  );
+	sv_hostname = Cvar_Get( "sv_hostname", Gameinfo::getInstance().unnamed_server().c_str(), CVAR_SERVERINFO  );
+	sv_hostname = Cvar_Get( "sv_hostname", Gameinfo::getInstance().unnamed_server().c_str(), CVAR_SERVERINFO  );
 	sv_maxclients = Cvar_Get( "sv_maxclients", "20", CVAR_SERVERINFO | CVAR_LATCH );  // NERVE - SMF - changed to 20 from 8
 	sv_maxRate = Cvar_Get( "sv_maxRate", "0",  CVAR_SERVERINFO );
 	sv_floodProtect = Cvar_Get( "sv_floodProtect", "0",  CVAR_SERVERINFO );
@@ -639,11 +640,11 @@ void SV_Init()
 	sv_zombietime = Cvar_Get( "sv_zombietime", "2", CVAR_TEMP );
 
 	sv_allowDownload = Cvar_Get( "sv_allowDownload", "1", 0 );
-	sv_master[ 0 ] = Cvar_Get( "sv_master1", MASTER1_SERVER_NAME, 0 );
-	sv_master[ 1 ] = Cvar_Get( "sv_master2", MASTER2_SERVER_NAME, 0 );
-	sv_master[ 2 ] = Cvar_Get( "sv_master3", MASTER3_SERVER_NAME, 0 );
-	sv_master[ 3 ] = Cvar_Get( "sv_master4", MASTER4_SERVER_NAME, 0 );
-	sv_master[ 4 ] = Cvar_Get( "sv_master5", MASTER5_SERVER_NAME, 0 );
+	sv_master[ 0 ] = Cvar_Get( "sv_master1", Gameinfo::getInstance().masterserver1().c_str(), 0 );
+	sv_master[ 1 ] = Cvar_Get( "sv_master2", Gameinfo::getInstance().masterserver2().c_str(), 0 );
+	sv_master[ 2 ] = Cvar_Get( "sv_master3", Gameinfo::getInstance().masterserver3().c_str(), 0 );
+	sv_master[ 3 ] = Cvar_Get( "sv_master4", Gameinfo::getInstance().masterserver4().c_str(), 0 );
+	sv_master[ 4 ] = Cvar_Get( "sv_master5", Gameinfo::getInstance().masterserver5().c_str(), 0 );
 	sv_reconnectlimit = Cvar_Get( "sv_reconnectlimit", "3", 0 );
 	sv_padPackets = Cvar_Get( "sv_padPackets", "0", 0 );
 	sv_killserver = Cvar_Get( "sv_killserver", "0", 0 );
@@ -656,7 +657,7 @@ void SV_Init()
 	sv_dl_maxRate = Cvar_Get( "sv_dl_maxRate", "42000", 0 );
 
 	sv_wwwDownload = Cvar_Get( "sv_wwwDownload", "0", 0 );
-	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", WWW_BASEURL, 0 );
+	sv_wwwBaseURL = Cvar_Get( "sv_wwwBaseURL", Gameinfo::getInstance().www_baseurl().c_str(), 0 );
 	sv_wwwFallbackURL = Cvar_Get( "sv_wwwFallbackURL", "", 0 );
 
 	//bani

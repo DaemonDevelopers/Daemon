@@ -1,0 +1,7 @@
+NAME               GameName
+VERSION            0.0
+DEFAULT_BASEPAK    mybasepak
+MASTERSERVER1      master.example.net
+MASTERSERVER2      master.template.net
+WWW_BASEURL        dl.example.net/pkg
+GAMENAME_STRING    abc

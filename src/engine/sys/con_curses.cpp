@@ -32,9 +32,9 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #include <curses.h>
 
 #ifdef BUILD_SERVER
-#define TITLE         "^2[ ^3" CLIENT_WINDOW_TITLE " Server Console ^2]"
+#define TITLE         va("^2[ ^3%s Server Console ^2]", CLIENT_WINDOW_TITLE)
 #else
-#define TITLE         "^2[ ^3" CLIENT_WINDOW_TITLE " Console ^2]"
+#define TITLE         va("^2[ ^3%s Console ^2]", CLIENT_WINDOW_TITLE)
 #endif
 #define PROMPT        "^3-> "
 static const int LOG_SCROLL    = 5;

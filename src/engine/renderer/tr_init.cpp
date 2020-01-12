@@ -693,7 +693,8 @@ public:
 		std::string fileName;
 		if ( args.Argc() == 2 )
 		{
-			fileName = Str::Format( "screenshots/" PRODUCT_NAME_LOWER "-%s.%s", args.Argv(1), fileExtension );
+			fileName = Str::Format("screenshots/%s-%s.%s", Gameinfo::getInstance().name_lower(),
+                                   args.Argv(1), fileExtension );
 		}
 		else
 		{
@@ -704,8 +705,9 @@ public:
 			int lastNumber;
 			for ( lastNumber = 0; lastNumber <= 999; lastNumber++ )
 			{
-				fileName = Str::Format( "screenshots/" PRODUCT_NAME_LOWER "_%04d-%02d-%02d_%02d%02d%02d_%03d.%s",
-					                    1900 + t.tm_year, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, lastNumber, fileExtension );
+				fileName = Str::Format( "screenshots/%s_%04d-%02d-%02d_%02d%02d%02d_%03d.%s",
+				             Gameinfo::getInstance().name_lower(), 1900 + t.tm_year, t.tm_mon + 1,
+				             t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, lastNumber, fileExtension );
 
 				if ( !ri.FS_FileExists( fileName.c_str() ) )
 				{

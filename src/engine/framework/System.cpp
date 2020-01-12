@@ -71,12 +71,12 @@ std::string GetSingletonSocketPath()
 	char homePathHash[33] = "";
 	Com_MD5Buffer(homePath.data(), homePath.size(), homePathHash, sizeof(homePathHash));
 #ifdef _WIN32
-	return std::string("\\\\.\\pipe\\" PRODUCT_NAME) + suffix + "-" + homePathHash;
+	return std::string("\\\\.\\pipe\\") + Gameinfo::getInstance().name() + suffix + "-" + homePathHash;
 #else
 	// We use a temporary directory rather that using the homepath because
 	// socket paths are limited to about 100 characters. This also avoids issues
 	// when the homepath is on a network filesystem.
-	return std::string("/tmp/." PRODUCT_NAME_LOWER) +  suffix + "-" + homePathHash + "/socket";
+	return std::string("/tmp/.") + Gameinfo::getInstance().name_lower() +  suffix + "-" + homePathHash + "/socket";
 #endif
 }
 
@@ -394,7 +394,7 @@ static void StartSignalThread()
 // Command line arguments
 struct cmdlineArgs_t {
 	cmdlineArgs_t()
-		: homePath(FS::DefaultHomePath()), libPath(FS::DefaultBasePath()), reset_config(false), use_curses(Application::GetTraits().useCurses) {}
+		: homePath(""), libPath(FS::DefaultBasePath()), reset_config(false), use_curses(Application::GetTraits().useCurses) {}
 
 	std::string homePath;
 	std::string libPath;
@@ -453,7 +453,7 @@ static void ParseCmdline(int argc, char** argv, cmdlineArgs_t& cmdlineArgs)
 		}
 
 		if (!strcmp(argv[i], "--help") || !strcmp(argv[i], "-help")) {
-			std::string helpUrl = Application::GetTraits().supportsUri ? " | -connect " URI_SCHEME "ADDRESS[:PORT]" : "";
+            std::string helpUrl = Application::GetTraits().supportsUri ? " [" URI_SCHEME "ADDRESS[:PORT]]"  : "";
 			printf("Usage: %s [-OPTION]... [+COMMAND...%s]\n", argv[0], helpUrl.c_str());
 			printf("Possible options are:\n"
 			       "  -homepath <path>         set the path used for user-specific configuration files and downloaded dpk files\n"
@@ -468,7 +468,7 @@ static void ParseCmdline(int argc, char** argv, cmdlineArgs_t& cmdlineArgs)
 			);
 			OSExit(0);
 		} else if (!strcmp(argv[i], "--version") || !strcmp(argv[i], "-version")) {
-			printf(PRODUCT_NAME " " PRODUCT_VERSION "\n");
+			printf(ENGINE_NAME " " ENGINE_VERSION "\n");
 			OSExit(0);
 		} else if (!strcmp(argv[i], "-set")) {
 			if (i >= argc - 2) {
@@ -535,16 +535,20 @@ static void Init(int argc, char** argv)
 #endif
 
 	// Print a banner and a copy of the command-line arguments
-	Log::Notice(Q3_VERSION " " PLATFORM_STRING " " ARCH_STRING " " __DATE__);
 	std::string argsString = "cmdline:";
 	for (int i = 1; i < argc; i++) {
 		argsString.push_back(' ');
 		argsString.append(argv[i]);
 	}
-	Log::Notice(argsString);
 
 	Sys::SetupCrashHandler(); // If Breakpad is enabled, this handler will soon be replaced.
 	Sys::ParseCmdline(argc, argv, cmdlineArgs);
+	Gameinfo::getInstance().parse(FS::Path::Build(cmdlineArgs.libPath, "gameinfo.conf"));
+    Log::Notice("%s %s", Q3_VERSION, PLATFORM_STRING " " ARCH_STRING " " __DATE__);
+	Log::Notice(argsString);
+	if (cmdlineArgs.homePath.empty()) {
+		cmdlineArgs.homePath = FS::DefaultHomePath();
+	}
 
 	// Platform-specific initialization
 #ifdef _WIN32

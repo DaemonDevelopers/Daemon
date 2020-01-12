@@ -269,7 +269,7 @@ public:
 
 		Print(
 			"(begin server status)\n"
-			"hostname: %s\n"
+			"hostname: %s on %s\n"
 			"version:  %s\n"
 			"protocol: %d\n"
 			"cpu:      %.0f%%\n"
@@ -279,7 +279,8 @@ public:
 			"num score connection address                port   name\n"
 			"--- ----- ---------- ---------------------- ------ ----",
 			sv_hostname->string,
-			Q3_VERSION " on " Q3_ENGINE,
+			Q3_VERSION,
+            Q3_ENGINE,
 			PROTOCOL_VERSION,
 			cpu,
 			time_string,

@@ -2918,7 +2918,7 @@ void CL_Init()
 
 	p_team = Cvar_Get("p_team", "0", CVAR_ROM );
 
-	cl_gamename = Cvar_Get( "cl_gamename", GAMENAME_FOR_MASTER, CVAR_TEMP );
+	cl_gamename = Cvar_Get( "cl_gamename", Gameinfo::getInstance().name_upper().c_str(), CVAR_TEMP );
 	cl_altTab = Cvar_Get( "cl_altTab", "1", 0 );
 
 	//bani
@@ -3130,7 +3130,7 @@ void CL_ServerInfoPacket( netadr_t from, msg_t *msg )
 	// Arnout: if this isn't the correct game, ignore it
 	gameName = Info_ValueForKey( infoString, "gamename" );
 
-	if ( !gameName[ 0 ] || Q_stricmp( gameName, GAMENAME_STRING ) )
+	if ( !gameName[ 0 ] || Q_stricmp( gameName, Gameinfo::getInstance().gamename_string().c_str() ) )
 	{
 		Log::Debug( "Different game info packet: %s", infoString );
 		return;

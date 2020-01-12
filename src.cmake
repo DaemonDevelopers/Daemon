@@ -274,6 +274,8 @@ set(ENGINELIST
     ${ENGINE_DIR}/sys/con_common.h
     ${ENGINE_DIR}/sys/con_common.cpp
     ${ENGINE_DIR}/sys/sys_events.h
+    ${ENGINE_DIR}/qcommon/gameinfo.h
+    ${ENGINE_DIR}/qcommon/gameinfo.cpp
 )
 
 if (WIN32)

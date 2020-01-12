@@ -31,30 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef COMMON_DEFS_H_
 #define COMMON_DEFS_H_
 
-#define PRODUCT_NAME        "Unvanquished"
-/** Case, No spaces */
-#define PRODUCT_NAME_UPPER  "UNVANQUISHED"
-/** No case, No spaces */
-#define PRODUCT_NAME_LOWER  "unvanquished"
-
-#define PRODUCT_VERSION     "0.51"
-
-/** Default base package */
-#define DEFAULT_BASE_PAK    PRODUCT_NAME_LOWER
-
-/** URI scheme and server browser filter */
-#define GAMENAME_STRING     "unv"
-#define GAMENAME_FOR_MASTER PRODUCT_NAME_UPPER
-
 #define MAX_MASTER_SERVERS  5
-#define MASTER1_SERVER_NAME "master.unvanquished.net"
-#define MASTER2_SERVER_NAME "master2.unvanquished.net"
-#define MASTER3_SERVER_NAME ""
-#define MASTER4_SERVER_NAME ""
-#define MASTER5_SERVER_NAME ""
-
-#define WWW_BASEURL         "dl.unvanquished.net/pkg"
-
 #define AUTOEXEC_NAME       "autoexec.cfg"
 
 #define CONFIG_NAME         "autogen.cfg"
@@ -63,7 +40,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define SERVERCONFIG_NAME   "autogen_server.cfg"
 
 #define UNNAMED_PLAYER      "UnnamedPlayer"
-#define UNNAMED_SERVER      PRODUCT_NAME " " PRODUCT_VERSION " Server"
 
 /** file containing our RSA public and private keys */
 #define RSAKEY_FILE        "pubkey"

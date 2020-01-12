@@ -2134,19 +2134,19 @@ std::string DefaultHomePath()
 	wchar_t buffer[MAX_PATH];
 	if (!SUCCEEDED(SHGetFolderPathW(nullptr, CSIDL_PERSONAL, nullptr, SHGFP_TYPE_CURRENT, buffer)))
 		return "";
-	return Str::UTF16To8(buffer) + "\\My Games\\" PRODUCT_NAME;
+	return Str::UTF16To8(buffer) + "\\My Games\\" + Gameinfo::getInstance().name();
 #else
 	const char* home = getenv("HOME");
 	if (!home)
 		return "";
 #ifdef __APPLE__
-	return std::string(home) + "/Library/Application Support/" PRODUCT_NAME;
+	return std::string(home) + "/Library/Application Support/" + Gameinfo::getInstance().name();
 #else
 	const char* _xdgDataHome = getenv("XDG_DATA_HOME");
 	std::string xdgDataHome = _xdgDataHome == nullptr ? Path::Build(Path::Build(std::string(home), ".local") ,"share") : std::string(_xdgDataHome);
 	std::string xdgHomePath;
 
-	xdgHomePath = Path::Build(xdgDataHome, PRODUCT_NAME_LOWER);
+	xdgHomePath = Path::Build(xdgDataHome, Gameinfo::getInstance().name_lower());
 
 	return xdgHomePath;
 #endif

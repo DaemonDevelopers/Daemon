@@ -96,7 +96,7 @@ class ClientApplication : public Application {
         void Shutdown(bool error, Str::StringRef message) override {
             #if defined(_WIN32) || defined(BUILD_GRAPHICAL_CLIENT)
                 if (error) {
-                    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, PRODUCT_NAME, message.c_str(), nullptr);
+                    SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, ENGINE_NAME, message.c_str(), nullptr);
                 }
             #endif
 

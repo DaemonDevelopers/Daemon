@@ -34,7 +34,7 @@ constexpr FS::offset_t MAX_FILE_LENGTH = 1000 * 1000 * 1000;
 const char TEMP_SUFFIX[] = ".tmp";
 
 // Cvars to select the base and extra packages to use
-static Cvar::Cvar<std::string> fs_basepak("fs_basepak", "base pak to load", 0, DEFAULT_BASE_PAK);
+static Cvar::Cvar<std::string> fs_basepak( "fs_basepak", "base pak to load", 0, "" );
 static Cvar::Cvar<std::string> fs_extrapaks("fs_extrapaks", "space-seperated list of paks to load in addition to the base pak", 0, "");
 
 struct handleData_t {
@@ -626,8 +626,9 @@ void FS_LoadBasePak()
 
 	if (!FS_LoadPak(fs_basepak.Get().c_str())) {
 		Log::Notice("Could not load base pak '%s', falling back to default\n", fs_basepak.Get().c_str());
-		if (!FS_LoadPak(DEFAULT_BASE_PAK))
-			Sys::Error("Could not load default base pak '%s'", DEFAULT_BASE_PAK);
+		if (!FS_LoadPak(Gameinfo::getInstance().default_basepak().c_str()))
+			Com_Error(errorParm_t::ERR_FATAL, "Could not load default base pak '%s'",
+			          Gameinfo::getInstance().default_basepak().c_str());
 	}
 }
 
