@@ -485,7 +485,12 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 				width = height = 0;
 				LoadRGBEToBytes( va( "%s/%s", mapName, lightmapFiles[ i ] ), &ldrImage, &width, &height );
 
-				auto image = R_CreateImage( va( "%s/%s", mapName, lightmapFiles[ i ] ), (const byte **)&ldrImage, width, height, 1, IF_NOPICMIP | IF_LIGHTMAP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
+				imageParams_t imageParams = {};
+				imageParams.bits = IF_NOPICMIP | IF_LIGHTMAP;
+				imageParams.filterType = filterType_t::FT_DEFAULT;
+				imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+				auto image = R_CreateImage( va( "%s/%s", mapName, lightmapFiles[ i ] ), (const byte **)&ldrImage, width, height, 1, &imageParams );
 
 				Com_AddToGrowList( &tr.lightmaps, image );
 
@@ -504,7 +509,13 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 
 				for (int i = 0; i < numLightmaps; i++) {
 					Log::Debug("...loading external lightmap '%s/%s'", mapName, lightmapFiles[i]);
-					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NOPICMIP | IF_NORMALMAP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP);
+
+					imageParams_t imageParams = {};
+					imageParams.bits = IF_NOPICMIP | IF_NORMALMAP;
+					imageParams.filterType = filterType_t::FT_DEFAULT;
+					imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), &imageParams);
 					Com_AddToGrowList(&tr.deluxemaps, image);
 				}
 			}
@@ -527,10 +538,20 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 				Log::Debug("...loading external lightmap '%s/%s'", mapName, lightmapFiles[i]);
 
 				if (!tr.worldDeluxeMapping || i % 2 == 0) {
-					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NOPICMIP | IF_LIGHTMAP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
+					imageParams_t imageParams = {};
+					imageParams.bits = IF_NOPICMIP | IF_LIGHTMAP;
+					imageParams.filterType = filterType_t::FT_LINEAR;
+					imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), &imageParams);
 					Com_AddToGrowList(&tr.lightmaps, image);
 				} else {
-					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), IF_NOPICMIP | IF_NORMALMAP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
+					imageParams_t imageParams = {};
+					imageParams.bits = IF_NOPICMIP | IF_NORMALMAP;
+					imageParams.filterType = filterType_t::FT_LINEAR;
+					imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+					auto image = R_FindImageFile(va("%s/%s", mapName, lightmapFiles[i]), &imageParams);
 					Com_AddToGrowList(&tr.deluxemaps, image);
 				}
 			}
@@ -611,9 +632,12 @@ static void R_LoadLightmaps( lump_t *l, const char *bspName )
 			}
 		}
 
-		tr.fatLightmap = R_CreateImage( va( "_fatlightmap%d", 0 ), (const byte **)&fatbuffer,
-						tr.fatLightmapSize, tr.fatLightmapSize, 1,
-						IF_NOPICMIP | IF_LIGHTMAP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_CLAMP );
+		imageParams_t imageParams = {};
+		imageParams.bits = IF_NOPICMIP | IF_LIGHTMAP;
+		imageParams.filterType = filterType_t::FT_DEFAULT;
+		imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+		tr.fatLightmap = R_CreateImage( va( "_fatlightmap%d", 0 ), (const byte **)&fatbuffer, tr.fatLightmapSize, tr.fatLightmapSize, 1, &imageParams );
 		Com_AddToGrowList( &tr.lightmaps, tr.fatLightmap );
 
 		ri.Hunk_FreeTempMemory( fatbuffer );
@@ -3965,14 +3989,13 @@ void R_LoadLightGrid( lump_t *l )
 		w->lightGridData1 = gridPoint1;
 		w->lightGridData2 = gridPoint2;
 
-		tr.lightGrid1Image = R_Create3DImage("<lightGrid1>", (const byte *)w->lightGridData1,
-						     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-						     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
-						     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
-		tr.lightGrid2Image = R_Create3DImage("<lightGrid2>", (const byte *)w->lightGridData2,
-						     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-						     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
-						     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
+		imageParams_t imageParams = {};
+		imageParams.bits = IF_NOPICMIP | IF_NOLIGHTSCALE;
+		imageParams.filterType = filterType_t::FT_DEFAULT;
+		imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
+		tr.lightGrid1Image = R_Create3DImage("<lightGrid1>", (const byte *)w->lightGridData1, w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ], w->lightGridBounds[ 2 ], &imageParams );
+		tr.lightGrid2Image = R_Create3DImage("<lightGrid2>", (const byte *)w->lightGridData2, w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ], w->lightGridBounds[ 2 ], &imageParams );
 
 		return;
 	}
@@ -4094,14 +4117,13 @@ void R_LoadLightGrid( lump_t *l )
 		}
 	}
 
-	tr.lightGrid1Image = R_Create3DImage("<lightGrid1>", (const byte *)w->lightGridData1,
-					     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-					     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
-					     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
-	tr.lightGrid2Image = R_Create3DImage("<lightGrid2>", (const byte *)w->lightGridData2,
-					     w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ],
-					     w->lightGridBounds[ 2 ], IF_NOPICMIP | IF_NOLIGHTSCALE,
-					     filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP | IF_NOLIGHTSCALE;
+	imageParams.filterType = filterType_t::FT_LINEAR;
+	imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
+	tr.lightGrid1Image = R_Create3DImage("<lightGrid1>", (const byte *)w->lightGridData1, w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ], w->lightGridBounds[ 2 ], &imageParams );
+	tr.lightGrid2Image = R_Create3DImage("<lightGrid2>", (const byte *)w->lightGridData2, w->lightGridBounds[ 0 ], w->lightGridBounds[ 1 ], w->lightGridBounds[ 2 ], &imageParams );
 
 	Log::Debug("%i light grid points created", w->numLightGridPoints );
 }
@@ -6668,7 +6690,7 @@ void R_BuildCubeMaps()
 		cubeProbe->cubemap->filterType = filterType_t::FT_LINEAR;
 		cubeProbe->cubemap->wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
 
-		R_UploadImage( ( const byte ** ) tr.cubeTemp, 6, 1, cubeProbe->cubemap );
+		R_UploadImage( ( const byte ** ) tr.cubeTemp, 6, 1, cubeProbe->cubemap, nullptr );
 	}
 
 	Log::Notice("\n");

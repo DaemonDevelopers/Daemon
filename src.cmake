@@ -92,6 +92,8 @@ set(RENDERERLIST
     ${ENGINE_DIR}/renderer/tr_fbo.cpp
     ${ENGINE_DIR}/renderer/tr_flares.cpp
     ${ENGINE_DIR}/renderer/tr_font.cpp
+    ${ENGINE_DIR}/renderer/InternalImage.cpp
+    ${ENGINE_DIR}/renderer/InternalImage.h
     ${ENGINE_DIR}/renderer/tr_image.cpp
     ${ENGINE_DIR}/renderer/tr_image.h
     ${ENGINE_DIR}/renderer/tr_image_crn.cpp

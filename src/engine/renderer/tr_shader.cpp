@@ -1402,7 +1402,6 @@ static bool ParseMap( const char **text, char *buffer, int bufferSize )
 static bool LoadMap( shaderStage_t *stage, const char *buffer, const int bundleIndex = TB_COLORMAP )
 {
 	char         *token;
-	int          imageBits = 0;
 	filterType_t filterType;
 	const char         *buffer_p = &buffer[ 0 ];
 
@@ -1450,10 +1449,15 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer, const int bundleI
 		return true;
 	}
 
+	imageParams_t imageParams = {};
+	imageParams.bits = 0;
+	imageParams.minDimension = shader.imageMinDimension;
+	imageParams.maxDimension = shader.imageMaxDimension;
+
 	// determine image options
 	if ( stage->overrideNoPicMip || shader.noPicMip || stage->highQuality || stage->forceHighQuality )
 	{
-		imageBits |= IF_NOPICMIP;
+		imageParams.bits |= IF_NOPICMIP;
 	}
 
 	switch ( stage->type )
@@ -1461,7 +1465,7 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer, const int bundleI
 		case stageType_t::ST_NORMALMAP:
 		case stageType_t::ST_HEATHAZEMAP:
 		case stageType_t::ST_LIQUIDMAP:
-			imageBits |= IF_NORMALMAP;
+			imageParams.bits |= IF_NORMALMAP;
 		default:
 			// silence warning for other types, we don't have to take care of them:
 			//    warning: enumeration value ‘ST_GLOWMAP’ not handled in switch [-Wswitch]
@@ -1470,24 +1474,24 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer, const int bundleI
 
 	if ( stage->stateBits & ( GLS_ATEST_BITS ) )
 	{
-		imageBits |= IF_ALPHATEST; // FIXME: this is unused
+		imageParams.bits |= IF_ALPHATEST; // FIXME: this is unused
 	}
 
 	if ( stage->overrideFilterType )
 	{
-		filterType = stage->filterType;
+		imageParams.filterType = stage->filterType;
 	}
 	else
 	{
-		filterType = shader.filterType;
+		imageParams.filterType = shader.filterType;
 	}
 
-	wrapType_t wrapType = stage->overrideWrapType ? stage->wrapType : shader.wrapType;
+	imageParams.wrapType = stage->overrideWrapType ? stage->wrapType : shader.wrapType;
 
 	// try to load the image
 	if ( stage->isCubeMap )
 	{
-		stage->bundle[ bundleIndex ].image[ 0 ] = R_FindCubeImage( buffer, imageBits, filterType, wrapType );
+		stage->bundle[ bundleIndex ].image[ 0 ] = R_FindCubeImage( buffer, &imageParams );
 
 		if ( !stage->bundle[ bundleIndex ].image[ 0 ] )
 		{
@@ -1497,7 +1501,7 @@ static bool LoadMap( shaderStage_t *stage, const char *buffer, const int bundleI
 	}
 	else
 	{
-		stage->bundle[ bundleIndex ].image[ 0 ] = R_FindImageFile( buffer, imageBits, filterType, wrapType );
+		stage->bundle[ bundleIndex ].image[ 0 ] = R_FindImageFile( buffer, &imageParams );
 
 		if ( !stage->bundle[ bundleIndex ].image[ 0 ] )
 		{
@@ -2123,6 +2127,8 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 			else
 			{
 				loadMap = true;
+				imageBits |= IF_LIGHTMAP;
+				imageBits |= IF_NOPICMIP;
 			}
 		}
 		// clampmap <name>
@@ -2157,7 +2163,14 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 				filterType = shader.filterType;
 			}
 
-			stage->bundle[ 0 ].image[ 0 ] = R_FindImageFile( token, imageBits, filterType, wrapTypeEnum_t::WT_CLAMP );
+			imageParams_t imageParams = {};
+			imageParams.bits = imageBits;
+			imageParams.filterType = filterType;
+			imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+			imageParams.minDimension = shader.imageMinDimension;
+			imageParams.maxDimension = shader.imageMaxDimension;
+
+			stage->bundle[ 0 ].image[ 0 ] = R_FindImageFile( token, &imageParams );
 
 			if ( !stage->bundle[ 0 ].image[ 0 ] )
 			{
@@ -2199,7 +2212,14 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 
 				if ( num < MAX_IMAGE_ANIMATIONS )
 				{
-					stage->bundle[ 0 ].image[ num ] = R_FindImageFile( token, IF_NONE, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_REPEAT );
+					imageParams_t imageParams = {};
+					imageParams.bits = IF_NONE;
+					imageParams.filterType = filterType_t::FT_DEFAULT;
+					imageParams.wrapType = wrapTypeEnum_t::WT_REPEAT;
+					imageParams.minDimension = shader.imageMinDimension;
+					imageParams.maxDimension = shader.imageMaxDimension;
+
+					stage->bundle[ 0 ].image[ num ] = R_FindImageFile( token, &imageParams );
 
 					if ( !stage->bundle[ 0 ].image[ num ] )
 					{
@@ -2250,7 +2270,14 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 				filterType = shader.filterType;
 			}
 
-			stage->bundle[ 0 ].image[ 0 ] = R_FindCubeImage( token, imageBits, filterType, wrapTypeEnum_t::WT_EDGE_CLAMP );
+			imageParams_t imageParams = {};
+			imageParams.bits = imageBits;
+			imageParams.filterType = filterType;
+			imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+			imageParams.minDimension = shader.imageMinDimension;
+			imageParams.maxDimension = shader.imageMaxDimension;
+
+			stage->bundle[ 0 ].image[ 0 ] = R_FindCubeImage( token, &imageParams );
 
 			if ( !stage->bundle[ 0 ].image[ 0 ] )
 			{
@@ -2803,6 +2830,7 @@ static bool ParseStage( shaderStage_t *stage, const char **text )
 			}
 			else if ( !Q_stricmp( token, "lightmap" ) )
 			{
+				imageBits |= IF_LIGHTMAP;
 				imageBits |= IF_NOPICMIP;
 				stage->tcGen_Lightmap = true;
 				stage->tcGen_Environment = false;
@@ -3434,7 +3462,14 @@ static void ParseSkyParms( const char **text )
 	{
 		Q_strncpyz( prefix, token, sizeof( prefix ) );
 
-		shader.sky.outerbox = R_FindCubeImage( prefix, IF_NONE, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_EDGE_CLAMP );
+		imageParams_t imageParams = {};
+		imageParams.bits = IF_NONE;
+		imageParams.filterType = filterType_t::FT_DEFAULT;
+		imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+		imageParams.minDimension = shader.imageMinDimension;
+		imageParams.maxDimension = shader.imageMaxDimension;
+
+		shader.sky.outerbox = R_FindCubeImage( prefix, &imageParams );
 
 		if ( !shader.sky.outerbox )
 		{
@@ -3474,7 +3509,14 @@ static void ParseSkyParms( const char **text )
 	{
 		Q_strncpyz( prefix, token, sizeof( prefix ) );
 
-		shader.sky.innerbox = R_FindCubeImage( prefix, IF_NONE, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_EDGE_CLAMP );
+		imageParams_t imageParams = {};
+		imageParams.bits = IF_NONE;
+		imageParams.filterType = filterType_t::FT_DEFAULT;
+		imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+		imageParams.minDimension = shader.imageMinDimension;
+		imageParams.maxDimension = shader.imageMaxDimension;
+
+		shader.sky.innerbox = R_FindCubeImage( prefix, &imageParams );
 
 		if ( !shader.sky.innerbox )
 		{
@@ -3933,6 +3975,30 @@ static bool ParseShader( const char *_text )
 		else if ( !Q_stricmp( token, "nopicmip" ) )
 		{
 			shader.noPicMip = true;
+			continue;
+		}
+		// imageMinDimension enforcement
+		else if ( !Q_stricmp( token, "imageMinDimension" ) )
+		{
+			token = COM_ParseExt2( text, false );
+
+			if ( token[ 0 ] )
+			{
+				shader.imageMinDimension = atof( token );
+			}
+
+			continue;
+		}
+		// imageMaxDimension enforcement
+		else if ( !Q_stricmp( token, "imageMaxDimension" ) )
+		{
+			token = COM_ParseExt2( text, false );
+
+			if ( token[ 0 ] )
+			{
+				shader.imageMaxDimension = atof( token );
+			}
+
 			continue;
 		}
 		// RF, allow each shader to permit compression if available (removed option)
@@ -5730,11 +5796,19 @@ shader_t       *R_FindShader( const char *name, shaderType_t type,
 	if( !(bits & RSF_NOMIP) ) {
 		LoadExtraMaps( &stages[ 0 ], fileName );
 
-		image = R_FindImageFile( fileName, bits, filterType_t::FT_DEFAULT,
-					 wrapTypeEnum_t::WT_REPEAT );
+		imageParams_t imageParams = {};
+		imageParams.bits = bits;
+		imageParams.filterType = filterType_t::FT_DEFAULT;
+		imageParams.wrapType = wrapTypeEnum_t::WT_REPEAT;
+
+		image = R_FindImageFile( fileName, &imageParams );
 	} else {
-		image = R_FindImageFile( fileName, bits, filterType_t::FT_LINEAR,
-					 wrapTypeEnum_t::WT_CLAMP );
+		imageParams_t imageParams = {};
+		imageParams.bits = bits;
+		imageParams.filterType = filterType_t::FT_LINEAR;
+		imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+		image = R_FindImageFile( fileName, &imageParams );
 	}
 
 	if ( !image )

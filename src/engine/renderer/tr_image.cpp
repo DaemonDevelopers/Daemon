@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 // tr_image.c
 #include <common/FileSystem.h>
+#include "InternalImage.h"
 #include "tr_local.h"
 
 int                  gl_filter_min = GL_LINEAR_MIPMAP_NEAREST;
@@ -143,6 +144,7 @@ void GL_TextureMode( const char *string )
 	}
 }
 
+
 /*
 ===============
 R_ImageList_f
@@ -153,15 +155,14 @@ void R_ImageList_f()
 	int        i;
 	image_t    *image;
 	int        texels;
-	int        dataSize;
-	int        imageDataSize;
+	unsigned   dataSize;
 	const char *yesno[] =
 	{
 		"no ", "yes"
 	};
 	const char *filter = ri.Cmd_Argc() > 1 ? ri.Cmd_Argv(1) : nullptr;
 
-	Log::Notice("\n      -w-- -h-- -mm- -type-   -if-- wrap --name-------" );
+	Log::Notice("\n      -w-- -h-- -px- -size------ -mm- -type- -format- -wrap.s- -wrap.t- -name-------" );
 
 	texels = 0;
 	dataSize = 0;
@@ -169,7 +170,8 @@ void R_ImageList_f()
 	for ( i = 0; i < tr.images.currentElements; i++ )
 	{
 		image = (image_t*) Com_GrowListElement( &tr.images, i );
-		char buffer[ MAX_TOKEN_CHARS ];
+		int sizeFactor = 1;
+		std::string imageType;
 		std::string out;
 
 		if ( filter && !Com_Filter( filter, image->name, true ) )
@@ -177,279 +179,221 @@ void R_ImageList_f()
 			continue;
 		}
 
-		Com_sprintf( buffer, sizeof( buffer ), "%4i: %4i %4i  %s   ",
-		           i, image->uploadWidth, image->uploadHeight, yesno[ image->filterType == filterType_t::FT_DEFAULT ] );
-		out += buffer;
 		switch ( image->type )
 		{
 			case GL_TEXTURE_2D:
-				texels += image->uploadWidth * image->uploadHeight;
-				imageDataSize = image->uploadWidth * image->uploadHeight;
-
-				Com_sprintf( buffer, sizeof( buffer ),  "2D   " );
-				out += buffer;
+				imageType = "2D    ";
 				break;
 
 			case GL_TEXTURE_CUBE_MAP:
-				texels += image->uploadWidth * image->uploadHeight * 6;
-				imageDataSize = image->uploadWidth * image->uploadHeight * 6;
-
-				Com_sprintf( buffer, sizeof( buffer ),  "CUBE " );
-				out += buffer;
+				sizeFactor = 6;
+				imageType = "CUBE  ";
 				break;
 
 			default:
-				Log::Debug( "Undocumented image type %i for image %s", image->type, image->name );
-				Com_sprintf( buffer, sizeof( buffer ),  "%5i    ", image->type );
-				out += buffer;
-				imageDataSize = image->uploadWidth * image->uploadHeight;
+				Log::Debug( "Undocumented image imageType %i for image %s", image->type, image->name );
+				imageType = Str::Format( "%5i ", image->type );
 				break;
 		}
+
+		// FIXME: it does not take mipmaps in account.
+		int imageDataSize = R_GetInternalImageSize( image );
+		int texelCount = image->uploadWidth * image->uploadHeight * sizeFactor;
+		int imagePixelSize = imageDataSize * 8 / texelCount;
+
+		out += Str::Format( "%4i: %4i %4i %4i   %9i %s  %s ",
+			i,
+			image->uploadWidth,
+			image->uploadHeight,
+			imagePixelSize,
+			imageDataSize,
+			yesno[ image->filterType == filterType_t::FT_DEFAULT ],
+			imageType );
 
 		switch ( image->internalFormat )
 		{
 			case GL_RGB8:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGB8     " );
-				out += buffer;
-				imageDataSize *= 3;
+				out += "RGB8     ";
 				break;
 
 			case GL_RGBA8:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGBA8    " );
-				out += buffer;
-				imageDataSize *= 4;
+				out += "RGBA8    ";
 				break;
 
 			case GL_RGB16:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGB      " );
-				out += buffer;
-				imageDataSize *= 6;
+				out += "RGB      ";
 				break;
 
 			case GL_RGB16F:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGB16F   " );
-				out += buffer;
-				imageDataSize *= 6;
+				out += "RGB16F   ";
 				break;
 
 			case GL_RGB32F:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGB32F   " );
-				out += buffer;
-				imageDataSize *= 12;
+				out += "RGB32F   ";
 				break;
 
 			case GL_RGBA16F:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGBA16F  " );
-				out += buffer;
-				imageDataSize *= 8;
+				out += "RGBA16F  ";
 				break;
 
 			case GL_RGBA32F:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGBA32F  " );
-				out += buffer;
-				imageDataSize *= 16;
+				out += "RGBA32F  ";
 				break;
 
 			case GL_ALPHA16F_ARB:
-				Com_sprintf( buffer, sizeof( buffer ),  "A16F     " );
-				out += buffer;
-				imageDataSize *= 2;
+				out += "A16F     ";
 				break;
 
 			case GL_ALPHA32F_ARB:
-				Com_sprintf( buffer, sizeof( buffer ),  "A32F     " );
-				out += buffer;
-				imageDataSize *= 4;
+				out += "A32F     ";
 				break;
 
 			case GL_R16F:
-				Com_sprintf( buffer, sizeof( buffer ),  "R16F     " );
-				out += buffer;
-				imageDataSize *= 2;
+				out += "R16F     ";
 				break;
 
 			case GL_R32F:
-				Com_sprintf( buffer, sizeof( buffer ),  "R32F     " );
-				out += buffer;
-				imageDataSize *= 4;
+				out += "R32F     ";
 				break;
 
 			case GL_LUMINANCE_ALPHA16F_ARB:
-				Com_sprintf( buffer, sizeof( buffer ),  "LA16F    " );
-				out += buffer;
-				imageDataSize *= 4;
+				out += "LA16F    ";
 				break;
 
 			case GL_LUMINANCE_ALPHA32F_ARB:
-				Com_sprintf( buffer, sizeof( buffer ),  "LA32F    " );
-				out += buffer;
-				imageDataSize *= 8;
+				out += "LA32F    ";
 				break;
 
 			case GL_RG16F:
-				Com_sprintf( buffer, sizeof( buffer ),  "RG16F    " );
-				out += buffer;
-				out += buffer;
-				imageDataSize *= 4;
+				out += "RG16F    ";
 				break;
 
 			case GL_RG32F:
-				Com_sprintf( buffer, sizeof( buffer ),  "RG32F    " );
-				out += buffer;
-				imageDataSize *= 8;
+				out += "RG32F    ";
 				break;
 
 			case GL_COMPRESSED_RGBA:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGBAC " );
-				out += buffer;
-				// TODO: find imageDataSize
+				out += "RGBAC ";
 				break;
 
 			case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
-				Com_sprintf( buffer, sizeof( buffer ),  "DXT1     " );
-				out += buffer;
-				imageDataSize *= 4 / 8;
+				out += "DXT1     ";
 				break;
 
 			case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
-				Com_sprintf( buffer, sizeof( buffer ),  "DXT1a    " );
-				out += buffer;
-				imageDataSize *= 4 / 8;
+				out += "DXT1a    ";
 				break;
 
 			case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-				Com_sprintf( buffer, sizeof( buffer ),  "DXT3     " );
-				out += buffer;
-				imageDataSize *= 4 / 4;
+				out += "DXT3     ";
 				break;
 
 			case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-				Com_sprintf( buffer, sizeof( buffer ),  "DXT5     " );
-				out += buffer;
-				imageDataSize *= 4 / 4;
+				out += "DXT5     ";
 				break;
 
 			case GL_COMPRESSED_RED_RGTC1:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGTC1r   " );
-				out += buffer;
-				// TODO: find imageDataSize
+				out += "RGTC1r   ";
 				break;
 
 			case GL_COMPRESSED_SIGNED_RED_RGTC1:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGTC1Sr  " );
-				out += buffer;
-				// TODO: find imageDataSize
+				out += "RGTC1Sr  ";
 				break;
 
 			case GL_COMPRESSED_RG_RGTC2:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGTC2rg  " );
-				out += buffer;
-				// TODO: find imageDataSize
+				out += "RGTC2rg  ";
 				break;
 
 			case GL_COMPRESSED_SIGNED_RG_RGTC2:
-				Com_sprintf( buffer, sizeof( buffer ),  "RGTC2Srg " );
-				out += buffer;
-				// TODO: find imageDataSize
+				out += "RGTC2Srg ";
 				break;
 
 			case GL_DEPTH_COMPONENT16:
-				Com_sprintf( buffer, sizeof( buffer ),  "D16      " );
-				out += buffer;
-				imageDataSize *= 2;
+				out += "D16      ";
 				break;
 
 			case GL_DEPTH_COMPONENT24:
-				Com_sprintf( buffer, sizeof( buffer ),  "D24      " );
-				out += buffer;
-				imageDataSize *= 3;
+				out += "D24      ";
 				break;
 
 			case GL_DEPTH_COMPONENT32:
-				Com_sprintf( buffer, sizeof( buffer ),  "D32      " );
-				out += buffer;
-				imageDataSize *= 4;
+				out += "D32      ";
 				break;
 
 			default:
 				Log::Debug( "Undocumented image format %i for image %s", image->internalFormat, image->name );
-				Com_sprintf( buffer, sizeof( buffer ),  "%5i    ", image->internalFormat );
-				out += buffer;
-				imageDataSize *= 4;
+				out += Str::Format( "%5i    ", image->internalFormat );
 				break;
 		}
 
 		switch ( image->wrapType.s )
 		{
 			case wrapTypeEnum_t::WT_REPEAT:
-				Com_sprintf( buffer, sizeof( buffer ),  "s.rept  " );
-				out += buffer;
+				out += "s.rept   ";
 				break;
 
 			case wrapTypeEnum_t::WT_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "s.clmp  " );
-				out += buffer;
+				out += "s.clmp   ";
 				break;
 
 			case wrapTypeEnum_t::WT_EDGE_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "s.eclmp " );
-				out += buffer;
+				out += "s.eclmp  ";
 				break;
 
 			case wrapTypeEnum_t::WT_ZERO_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "s.zclmp " );
-				out += buffer;
+				out += "s.0clmp  ";
 				break;
 
 			case wrapTypeEnum_t::WT_ALPHA_ZERO_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "s.azclmp" );
-				out += buffer;
+				out += "s.a0clmp ";
+				break;
+
+			case wrapTypeEnum_t::WT_ONE_CLAMP:
+				out += "t.1clmp  ";
 				break;
 
 			default:
 				Log::Debug( "Undocumented wrapType.s %i for image %s", Util::ordinal(image->wrapType.s), image->name );
-				Com_sprintf( buffer, sizeof( buffer ),  "s.%4i  ", Util::ordinal(image->wrapType.s) );
-				out += buffer;
+				out += Str::Format( "s.%4i   ", Util::ordinal(image->wrapType.s) );
 				break;
 		}
 
 		switch ( image->wrapType.t )
 		{
 			case wrapTypeEnum_t::WT_REPEAT:
-				Com_sprintf( buffer, sizeof( buffer ),  "t.rept  " );
-				out += buffer;
+				out += "t.rept   ";
 				break;
 
 			case wrapTypeEnum_t::WT_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "t.clmp  " );
-				out += buffer;
+				out += "t.clmp   ";
 				break;
 
 			case wrapTypeEnum_t::WT_EDGE_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "t.eclmp " );
-				out += buffer;
+				out += "t.eclmp  ";
 				break;
 
 			case wrapTypeEnum_t::WT_ZERO_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "t.zclmp " );
-				out += buffer;
+				out += "t.0clmp  ";
 				break;
 
 			case wrapTypeEnum_t::WT_ALPHA_ZERO_CLAMP:
-				Com_sprintf( buffer, sizeof( buffer ),  "t.azclmp" );
-				out += buffer;
+				out += "t.a0clmp ";
+				break;
+
+			case wrapTypeEnum_t::WT_ONE_CLAMP:
+				out += "t.1clmp  ";
 				break;
 
 			default:
 				Log::Debug( "Undocumented wrapType.t %i for image %s", Util::ordinal(image->wrapType.t), image->name );
-				Com_sprintf( buffer, sizeof( buffer ),  "t.%4i  ", Util::ordinal(image->wrapType.t));
-				out += buffer;
+				out += Str::Format( "t.%4i   ", Util::ordinal(image->wrapType.t) );
 				break;
 		}
 
 		dataSize += imageDataSize;
+		texels += texelCount;
 
-		Log::Notice("%s %s", out.c_str(), image->name );
+		Log::Notice("%s%s", out.c_str(), image->name );
 	}
 
 	Log::Notice(" ---------" );
@@ -808,13 +752,10 @@ level 1 has only numLayers/2 layers. There are still numLayers pointers in
 the dataArray for every mip level, the unneeded elements at the end aren't used.
 ===============
 */
-void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
-		    image_t *image )
+void R_UploadImage( const byte **dataArray, int numLayers, int numMips, image_t *image, imageParams_t *imageParams )
 {
 	const byte *data;
 	byte       *scaledBuffer = nullptr;
-	int        scaledWidth, scaledHeight;
-	int        mipWidth, mipHeight, mipLayers, mipSize, blockSize;
 	int        i, j, c;
 	const byte *scan;
 	GLenum     target;
@@ -830,55 +771,10 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 
 	GL_Bind( image );
 
-	scaledWidth = image->width;
-	scaledHeight = image->height;
-
-	// perform optional picmip operation
-	if ( !( image->bits & IF_NOPICMIP ) )
-	{
-		int picmip = r_picmip->integer;
-		if( picmip < 0 )
-			picmip = 0;
-
-		scaledWidth >>= picmip;
-		scaledHeight >>= picmip;
-
-		if( dataArray && numMips > picmip ) {
-			dataArray += numLayers * picmip;
-			numMips -= picmip;
-		}
-	}
-
-	// clamp to minimum size
-	if ( scaledWidth < 1 )
-	{
-		scaledWidth = 1;
-	}
-
-	if ( scaledHeight < 1 )
-	{
-		scaledHeight = 1;
-	}
-
-	// clamp to the current upper OpenGL limit
-	// scale both axis down equally so we don't have to
-	// deal with a half mip resampling
-	if ( image->type == GL_TEXTURE_CUBE_MAP )
-	{
-		while ( scaledWidth > glConfig2.maxCubeMapTextureSize || scaledHeight > glConfig2.maxCubeMapTextureSize )
-		{
-			scaledWidth >>= 1;
-			scaledHeight >>= 1;
-		}
-	}
-	else
-	{
-		while ( scaledWidth > glConfig.maxTextureSize || scaledHeight > glConfig.maxTextureSize )
-		{
-			scaledWidth >>= 1;
-			scaledHeight >>= 1;
-		}
-	}
+	int scaledWidth = image->width;
+	int scaledHeight = image->height;
+	int customScalingStep = R_GetImageCustomScalingStep( image, imageParams );
+	R_DownscaleImageDimensions( customScalingStep, &scaledWidth, &scaledHeight, &dataArray, numLayers, &numMips );
 
 	// set target
 	switch ( image->type )
@@ -975,23 +871,19 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 		else if( image->bits & IF_BC1 ) {
 			format = GL_NONE;
 			internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-			blockSize = 8;
 		}
 		else if ( image->bits & IF_BC2 ) {
 			format = GL_NONE;
 			internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
-			blockSize = 16;
 		}
 		else if ( image->bits & IF_BC3 ) {
 			format = GL_NONE;
 			internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-			blockSize = 16;
 		}
 		else if ( image->bits & IF_BC4 ) {
 			if( !glConfig2.textureCompressionRGTCAvailable ) {
 				format = GL_NONE;
 				internalFormat = GL_COMPRESSED_RGB_S3TC_DXT1_EXT;
-				blockSize = 8;
 
 				if( dataArray ) {
 					// convert to BC1/dxt1
@@ -1000,14 +892,12 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 			else {
 				format = GL_NONE;
 				internalFormat = GL_COMPRESSED_RED_RGTC1;
-				blockSize = 8;
 			}
 		}
 		else if ( image->bits & IF_BC5 ) {
 			if( !glConfig2.textureCompressionRGTCAvailable ) {
 				format = GL_NONE;
 				internalFormat = GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
-				blockSize = 16;
 
 				R_ConvertBC5Image( dataArray, &scaledBuffer,
 						   numMips, numLayers,
@@ -1017,7 +907,6 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 			else {
 				format = GL_NONE;
 				internalFormat = GL_COMPRESSED_RG_RGTC2;
-				blockSize = 16;
 			}
 		}
 	}
@@ -1057,34 +946,66 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 		}
 	}
 
+	image->uploadWidth = scaledWidth;
+	image->uploadHeight = scaledHeight;
+	image->internalFormat = internalFormat;
+	int hardwareScalingStep = R_GetImageHardwareScalingStep( image, format );
+
+	if ( hardwareScalingStep > 0 )
+	{
+		Log::Warn( "Image %s too large, downscaling %d time(s) to fit the hardware limits", image->name, hardwareScalingStep );
+
+		R_DownscaleImageDimensions( hardwareScalingStep, &scaledWidth, &scaledHeight, &dataArray, numLayers, &numMips );
+	}
+
 	// 3D textures are uploaded in slices via glTexSubImage3D,
 	// so the storage has to be allocated before the loop
-	if( image->type == GL_TEXTURE_3D ) {
-		mipWidth = scaledWidth;
-		mipHeight = scaledHeight;
-		mipLayers = numLayers;
+	if( image->type == GL_TEXTURE_3D )
+	{
+		int mipWidth = scaledWidth;
+		int mipHeight = scaledHeight;
+		int mipLayers = numLayers;
 
-		for( i = 0; i < numMips; i++ ) {
-			glTexImage3D( GL_TEXTURE_3D, i, internalFormat,
-				      scaledWidth, scaledHeight, mipLayers,
-				      0, format, GL_UNSIGNED_BYTE, nullptr );
+		for( i = 0; i < numMips; i++ )
+		{
+			glTexImage3D( GL_TEXTURE_3D, i, internalFormat, mipWidth, mipHeight, mipLayers, 0, format, GL_UNSIGNED_BYTE, nullptr );
 
-			if( mipWidth  > 1 ) mipWidth  >>= 1;
-			if( mipHeight > 1 ) mipHeight >>= 1;
-			if( mipLayers > 1 ) mipLayers >>= 1;
+			GL_CheckErrors();
+
+			if( mipWidth  > 1 )
+			{
+				mipWidth  >>= 1;
+			}
+
+			if( mipHeight > 1 )
+			{
+				mipHeight >>= 1;
+			}
+
+			if( mipLayers > 1 )
+			{
+				mipLayers >>= 1;
+			}
 		}
 	}
 
-	if( format != GL_NONE ) {
+	if( format != GL_NONE )
+	{
 		if( dataArray )
+		{
 			scaledBuffer = (byte*) ri.Hunk_AllocateTempMemory( sizeof( byte ) * scaledWidth * scaledHeight * 4 );
+		}
 
 		for ( i = 0; i < numLayers; i++ )
 		{
 			if( dataArray )
+			{
 				data = dataArray[ i ];
+			}
 			else
+			{
 				data = nullptr;
+			}
 
 			if( scaledBuffer )
 			{
@@ -1095,8 +1016,7 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 				}
 				else
 				{
-					ResampleTexture( ( unsigned * ) data, image->width, image->height, ( unsigned * ) scaledBuffer, scaledWidth, scaledHeight,
-							 ( image->bits & IF_NORMALMAP ) );
+					ResampleTexture( ( unsigned * ) data, image->width, image->height, ( unsigned * ) scaledBuffer, scaledWidth, scaledHeight, ( image->bits & IF_NORMALMAP ) );
 				}
 
 				if( image->bits & IF_NORMALMAP ) {
@@ -1118,95 +1038,141 @@ void R_UploadImage( const byte **dataArray, int numLayers, int numMips,
 				}
 			}
 
+			if ( image->width == scaledWidth || image->height == scaledHeight )
+			{
+				Log::Debug( "Uploading image %s with %d×%d original size, layer %d", image->name, image->width, image->height, i );
+			}
+			else
+			{
+				Log::Debug( "Uploading image %s with %d×%d size, downscaled from %d×%d size, layer %d", image->name, scaledWidth, scaledHeight, image->width, image->height, i );
+			}
+
 			image->uploadWidth = scaledWidth;
 			image->uploadHeight = scaledHeight;
 			image->internalFormat = internalFormat;
 
 			switch ( image->type )
 			{
-			case GL_TEXTURE_3D:
-				if( scaledBuffer ) {
-					glTexSubImage3D( GL_TEXTURE_3D, 0, 0, 0, i,
-							 scaledWidth, scaledHeight, 1,
-							 format, GL_UNSIGNED_BYTE,
-							 scaledBuffer );
-				}
-				break;
-			case GL_TEXTURE_CUBE_MAP:
-				glTexImage2D( target + i, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_BYTE,
-				              scaledBuffer );
-				break;
+				case GL_TEXTURE_3D:
+					if( scaledBuffer ) {
+						glTexSubImage3D( target, 0, 0, 0, i, scaledWidth, scaledHeight, 1, format, GL_UNSIGNED_BYTE, scaledBuffer );
+					}
+					break;
 
-			default:
-				if ( image->bits & IF_PACKED_DEPTH24_STENCIL8 )
-				{
-					glTexImage2D( target, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_INT_24_8, nullptr );
-				}
-				else
-				{
-					glTexImage2D( target, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_BYTE, scaledBuffer );
-				}
+				case GL_TEXTURE_CUBE_MAP:
+					glTexImage2D( target + i, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_BYTE, scaledBuffer );
 
-				break;
+						GL_CheckErrors();
+					break;
+
+				default:
+					if ( image->bits & IF_PACKED_DEPTH24_STENCIL8 )
+					{
+						glTexImage2D( target, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_INT_24_8, nullptr );
+
+						GL_CheckErrors();
+					}
+					else
+					{
+						glTexImage2D( target, 0, internalFormat, scaledWidth, scaledHeight, 0, format, GL_UNSIGNED_BYTE, scaledBuffer );
+
+						GL_CheckErrors();
+					}
+					break;
 			}
 
 			if ( image->filterType == filterType_t::FT_DEFAULT )
 			{
-				if( image->type != GL_TEXTURE_CUBE_MAP || i == 5 ) {
+				if( image->type != GL_TEXTURE_CUBE_MAP || i == 5 )
+				{
 					glGenerateMipmap( image->type );
 					glTexParameteri( image->type, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR );  // default to trilinear
+
+					GL_CheckErrors();
 				}
 			}
 		}
-	} else {
+	}
+	else
+	{
 		// already compressed texture data, precomputed mipmaps must be
 		// in the data array
 		image->uploadWidth = scaledWidth;
 		image->uploadHeight = scaledHeight;
 		image->internalFormat = internalFormat;
 
-		mipWidth = scaledWidth;
-		mipHeight = scaledHeight;
-		mipLayers = numLayers;
+		int mipWidth = scaledWidth;
+		int mipHeight = scaledHeight;
+		int mipLayers = numLayers;
+
+		int blockSize = R_GetBlockSize( image );
 
 		for ( i = 0; i < numMips; i++ )
 		{
-			mipSize = ((mipWidth + 3) >> 2)
-			  * ((mipHeight + 3) >> 2) * blockSize;
+			int mipSize = R_GetMipSize( mipWidth, mipHeight, blockSize );
 
-			for ( j = 0; j < mipLayers; j++ ) {
+			for ( j = 0; j < mipLayers; j++ )
+			{
 				if( dataArray )
+				{
 					data = dataArray[ j * numMips + i ];
+				}
 				else
+				{
 					data = nullptr;
+				}
+
+				if ( i != 0 )
+				{
+					Log::Debug( "Uploading compressed image %s with %d×%d size, mip %d, layer %d", image->name, mipWidth, mipHeight, image->width, image->height, i, j );
+				}
+				if ( image->width == mipWidth || image->height == mipHeight )
+				{
+					Log::Debug( "Uploading compressed image %s with %d×%d original size, mip %d, layer %d", image->name, image->width, image->height, i, j );
+				}
+				else
+				{
+					Log::Debug( "Uploading compressed image %s with %d×%d size, downscaled from %d×%d size, mip %d, layer %d", image->name, mipWidth, mipHeight, image->width, image->height, i, j );
+				}
 
 				switch ( image->type )
 				{
-				case GL_TEXTURE_3D:
-					glCompressedTexSubImage3D( GL_TEXTURE_3D, i, 0, 0, j,
-								   scaledWidth, scaledHeight, 1,
-								   internalFormat, mipSize, data );
-					break;
-				case GL_TEXTURE_CUBE_MAP:
-					glCompressedTexImage2D( target + j, i, internalFormat, mipWidth, mipHeight, 0, mipSize, data );
+					case GL_TEXTURE_3D:
+						glCompressedTexSubImage3D( GL_TEXTURE_3D, i, 0, 0, j, mipWidth, mipHeight, 1, internalFormat, mipSize, data );
+
+						GL_CheckErrors();
 					break;
 
-				default:
-					glCompressedTexImage2D( target, i, internalFormat, mipWidth, mipHeight, 0, mipSize, data );
-					break;
+					case GL_TEXTURE_CUBE_MAP:
+						glCompressedTexImage2D( target + j, i, internalFormat, mipWidth, mipHeight, 0, mipSize, data );
+
+						GL_CheckErrors();
+						break;
+
+					default:
+						glCompressedTexImage2D( target, i, internalFormat, mipWidth, mipHeight, 0, mipSize, data );
+
+						GL_CheckErrors();
+						break;
 				}
 
 				if( mipWidth > 1 )
+				{
 					mipWidth >>= 1;
+				}
+
 				if( mipHeight > 1 )
+				{
 					mipHeight >>= 1;
+				}
+
 				if( image->type == GL_TEXTURE_3D && mipLayers > 1 )
+				{
 					mipLayers >>= 1;
+				}
 			}
 		}
 	}
-
-	GL_CheckErrors();
 
 	// set filter type
 	switch ( image->filterType )
@@ -1434,8 +1400,7 @@ static void R_ExportTexture( image_t *image )
 R_CreateImage
 ================
 */
-image_t        *R_CreateImage( const char *name, const byte **pic, int width, int height,
-			       int numMips, int bits, filterType_t filterType, wrapType_t wrapType )
+image_t *R_CreateImage( const char *name, const byte **pic, int width, int height, int numMips, imageParams_t* imageParams )
 {
 	image_t *image;
 
@@ -1445,17 +1410,17 @@ image_t        *R_CreateImage( const char *name, const byte **pic, int width, in
 	{
 		return nullptr;
 	}
-
+	
 	image->type = GL_TEXTURE_2D;
 
 	image->width = width;
 	image->height = height;
 
-	image->bits = bits;
-	image->filterType = filterType;
-	image->wrapType = wrapType;
+	image->bits = imageParams->bits;
+	image->filterType = imageParams->filterType;
+	image->wrapType = imageParams->wrapType;
 
-	R_UploadImage( pic, 1, numMips, image );
+	R_UploadImage( pic, 1, numMips, image, imageParams );
 
 	if( r_exportTextures->integer ) {
 		R_ExportTexture( image );
@@ -1513,9 +1478,7 @@ image_t *R_CreateGlyph( const char *name, const byte *pic, int width, int height
 R_CreateCubeImage
 ================
 */
-image_t        *R_CreateCubeImage( const char *name,
-                                   const byte *pic[ 6 ],
-                                   int width, int height, int bits, filterType_t filterType, wrapType_t wrapType )
+image_t *R_CreateCubeImage( const char *name, const byte *pic[ 6 ], int width, int height, imageParams_t *imageParams )
 {
 	image_t *image;
 
@@ -1525,17 +1488,17 @@ image_t        *R_CreateCubeImage( const char *name,
 	{
 		return nullptr;
 	}
-
+	
 	image->type = GL_TEXTURE_CUBE_MAP;
 
 	image->width = width;
 	image->height = height;
 
-	image->bits = bits;
-	image->filterType = filterType;
-	image->wrapType = wrapType;
+	image->bits = imageParams->bits;
+	image->filterType = imageParams->filterType;
+	image->wrapType = imageParams->wrapType;
 
-	R_UploadImage( pic, 6, 1, image );
+	R_UploadImage( pic, 6, 1, image, imageParams );
 
 	if( r_exportTextures->integer ) {
 		R_ExportTexture( image );
@@ -1549,11 +1512,7 @@ image_t        *R_CreateCubeImage( const char *name,
 R_Create3DImage
 ================
 */
-image_t        *R_Create3DImage( const char *name,
-				 const byte *pic,
-				 int width, int height, int depth,
-				 int bits, filterType_t filterType,
-				 wrapType_t wrapType )
+image_t *R_Create3DImage( const char *name, const byte *pic, int width, int height, int depth, imageParams_t *imageParams )
 {
 	image_t *image;
 	const byte **pics;
@@ -1580,11 +1539,11 @@ image_t        *R_Create3DImage( const char *name,
 		pics = nullptr;
 	}
 
-	image->bits = bits;
-	image->filterType = filterType;
-	image->wrapType = wrapType;
+	image->bits = imageParams->bits;
+	image->filterType = imageParams->filterType;
+	image->wrapType = imageParams->wrapType;
 
-	R_UploadImage( pics, depth, 1, image );
+	R_UploadImage( pics, depth, 1, image, imageParams );
 
 	if( pics ) {
 		ri.Hunk_FreeTempMemory( pics );
@@ -1775,7 +1734,7 @@ Finds or loads the given image.
 Returns nullptr if it fails, not a default image.
 ==============
 */
-image_t        *R_FindImageFile( const char *imageName, int bits, filterType_t filterType, wrapType_t wrapType )
+image_t *R_FindImageFile( const char *imageName, imageParams_t *imageParams )
 {
 	image_t       *image = nullptr;
 	int           width = 0, height = 0, numLayers = 0, numMips = 0;
@@ -1801,14 +1760,14 @@ image_t        *R_FindImageFile( const char *imageName, int bits, filterType_t f
 			// the white image can be used with any set of parms, but other mismatches are errors
 			if ( Q_stricmp( buffer, "_white" ) )
 			{
-				diff = bits ^ image->bits;
+				diff = imageParams->bits ^ image->bits;
 
 				if ( diff & IF_NOPICMIP )
 				{
 					Log::Warn("reused image '%s' with mixed allowPicmip parm for shader", imageName );
 				}
 
-				if ( image->wrapType != wrapType )
+				if ( image->wrapType != imageParams->wrapType )
 				{
 					Log::Warn("reused image '%s' with mixed glWrapType parm for shader", imageName);
 				}
@@ -1821,7 +1780,7 @@ image_t        *R_FindImageFile( const char *imageName, int bits, filterType_t f
 	// load the pic from disk
 	pic[ 0 ] = nullptr;
 	buffer_p = &buffer[ 0 ];
-	R_LoadImage( &buffer_p, pic, &width, &height, &numLayers, &numMips, &bits );
+	R_LoadImage( &buffer_p, pic, &width, &height, &numLayers, &numMips, &imageParams->bits );
 
 	if ( (mallocPtr = pic[ 0 ]) == nullptr || numLayers > 0 )
 	{
@@ -1832,14 +1791,12 @@ image_t        *R_FindImageFile( const char *imageName, int bits, filterType_t f
 		return nullptr;
 	}
 
-	if ( bits & IF_LIGHTMAP )
+	if ( imageParams->bits & IF_LIGHTMAP )
 	{
-		R_ProcessLightmap( pic[ 0 ], 4, width, height, bits, pic[ 0 ] );
+		R_ProcessLightmap( pic[ 0 ], 4, width, height, imageParams->bits, pic[ 0 ] );
 	}
 
-	image = R_CreateImage( ( char * ) buffer, (const byte **)pic,
-			       width, height, numMips, bits,
-			       filterType, wrapType );
+	image = R_CreateImage( ( char * ) buffer, (const byte **)pic, width, height, numMips, imageParams );
 
 	ri.Free( mallocPtr );
 	return image;
@@ -2057,7 +2014,7 @@ struct face_t
 	int height;
 };
 
-image_t *R_FindCubeImage( const char *imageName, int bits, filterType_t filterType, wrapType_t wrapType )
+image_t *R_FindCubeImage( const char *imageName, imageParams_t *imageParams )
 {
 	int i, j;
 	image_t *image = nullptr;
@@ -2093,10 +2050,10 @@ image_t *R_FindCubeImage( const char *imageName, int bits, filterType_t filterTy
 		if( R_FindImageLoader( cubeMapName.c_str() ) >= 0 )
 		{
 			Log::Debug( "found %s cube map '%s'", loader.ext, cubeMapBaseName );
-			loader.ImageLoader( cubeMapName.c_str(), pic, &width, &height, &numLayers, &numMips, &bits, 0 );
+			loader.ImageLoader( cubeMapName.c_str(), pic, &width, &height, &numLayers, &numMips, &imageParams->bits, 0 );
 
 			if( numLayers == 6 && pic[0] ) {
-				image = R_CreateCubeImage( ( char * ) buffer, ( const byte ** ) pic, width, height, bits, filterType, wrapType );
+				image = R_CreateCubeImage( ( char * ) buffer, ( const byte ** ) pic, width, height, imageParams );
 				R_FreeCubePics( pic, 1 );
 				return image;
 			}
@@ -2122,7 +2079,7 @@ image_t *R_FindCubeImage( const char *imageName, int bits, filterType_t filterTy
 			Log::Debug( "looking for %s cube map face '%s'", format.name, filename );
 
 			filename_p = &filename[ 0 ];
-			R_LoadImage( &filename_p, &pic[ i ], &width, &height, &numLayers, &numMips, &bits );
+			R_LoadImage( &filename_p, &pic[ i ], &width, &height, &numLayers, &numMips, &imageParams->bits );
 
 			if ( pic[ i ] == nullptr )
 			{
@@ -2133,7 +2090,7 @@ image_t *R_FindCubeImage( const char *imageName, int bits, filterType_t filterTy
 				break;
 			}
 
-			if ( IsImageCompressed( bits ) )
+			if ( IsImageCompressed( imageParams->bits ) )
 			{
 				Log::Warn("cube map face '%s' has DXTn compression, cube map unusable", filename );
 				break;
@@ -2206,7 +2163,7 @@ image_t *R_FindCubeImage( const char *imageName, int bits, filterType_t filterTy
 			}
 
 			Log::Debug( "found %s multifile cube map '%s'", format.name, imageName );
-			image = R_CreateCubeImage( ( char * ) buffer, ( const byte ** ) pic, greatestEdge, greatestEdge, bits, filterType, wrapType );
+			image = R_CreateCubeImage( ( char * ) buffer, ( const byte ** ) pic, greatestEdge, greatestEdge, imageParams );
 			R_FreeCubePics( pic, i );
 			return image;
 		}
@@ -2313,8 +2270,12 @@ static void R_CreateFogImage()
 	// standard openGL clamping doesn't really do what we want -- it includes
 	// the border color at the edges.  OpenGL 1.2 has clamp-to-edge, which does
 	// what we want.
-	tr.fogImage = R_CreateImage( "_fog", ( const byte ** ) &data,
-				     FOG_S, FOG_T, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_DEFAULT;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.fogImage = R_CreateImage( "_fog", ( const byte ** ) &data, FOG_S, FOG_T, 1, &imageParams );
 	ri.Hunk_FreeTempMemory( data );
 
 	borderColor[ 0 ] = 1.0;
@@ -2352,8 +2313,12 @@ static void R_CreateDefaultImage()
 		  data[ x ][ DEFAULT_SIZE - 1 ][ 1 ] = data[ x ][ DEFAULT_SIZE - 1 ][ 2 ] = data[ x ][ DEFAULT_SIZE - 1 ][ 3 ] = 255;
 	}
 
-	tr.defaultImage = R_CreateImage( "_default", ( const byte ** ) &dataPtr,
-					 DEFAULT_SIZE, DEFAULT_SIZE, 1, IF_NOPICMIP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_REPEAT );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_DEFAULT;
+	imageParams.wrapType = wrapTypeEnum_t::WT_REPEAT;
+
+	tr.defaultImage = R_CreateImage( "_default", ( const byte ** ) &dataPtr, DEFAULT_SIZE, DEFAULT_SIZE, 1, &imageParams );
 }
 
 static void R_CreateRandomNormalsImage()
@@ -2387,8 +2352,12 @@ static void R_CreateRandomNormalsImage()
 		}
 	}
 
-	tr.randomNormalsImage = R_CreateImage( "_randomNormals", ( const byte ** ) &dataPtr,
-					       DEFAULT_SIZE, DEFAULT_SIZE, 1, IF_NOPICMIP, filterType_t::FT_DEFAULT, wrapTypeEnum_t::WT_REPEAT );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_DEFAULT;
+	imageParams.wrapType = wrapTypeEnum_t::WT_REPEAT;
+
+	tr.randomNormalsImage = R_CreateImage( "_randomNormals", ( const byte ** ) &dataPtr, DEFAULT_SIZE, DEFAULT_SIZE, 1, &imageParams );
 }
 
 static void R_CreateNoFalloffImage()
@@ -2399,8 +2368,12 @@ static void R_CreateNoFalloffImage()
 
 	byte *dataPtr = &data[0][0][0];
 
-	tr.noFalloffImage = R_CreateImage( "_noFalloff", ( const byte ** ) &dataPtr,
-					   8, 8, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_DEFAULT;
+	imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
+	tr.noFalloffImage = R_CreateImage( "_noFalloff", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 }
 
 static const int ATTENUATION_XY_SIZE = 128;
@@ -2438,9 +2411,12 @@ static void R_CreateAttenuationXYImage()
 		}
 	}
 
-	tr.attenuationXYImage =
-	  R_CreateImage( "_attenuationXY", ( const byte ** ) &dataPtr,
-			 ATTENUATION_XY_SIZE, ATTENUATION_XY_SIZE, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP);
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_DEFAULT;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.attenuationXYImage = R_CreateImage( "_attenuationXY", ( const byte ** ) &dataPtr, ATTENUATION_XY_SIZE, ATTENUATION_XY_SIZE, 1, &imageParams );
 }
 
 static void R_CreateContrastRenderFBOImage()
@@ -2450,7 +2426,12 @@ static void R_CreateContrastRenderFBOImage()
 	width = glConfig.vidWidth * 0.25f;
 	height = glConfig.vidHeight * 0.25f;
 
-	tr.contrastRenderFBOImage = R_CreateImage( "_contrastRenderFBO", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_DEFAULT;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.contrastRenderFBOImage = R_CreateImage( "_contrastRenderFBO", nullptr, width, height, 1, &imageParams );
 }
 
 static void R_CreateBloomRenderFBOImage()
@@ -2463,7 +2444,12 @@ static void R_CreateBloomRenderFBOImage()
 
 	for ( i = 0; i < 2; i++ )
 	{
-		tr.bloomRenderFBOImage[ i ] = R_CreateImage( va( "_bloomRenderFBO%d", i ), nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP );
+		imageParams_t imageParams = {};
+		imageParams.bits = IF_NOPICMIP;
+		imageParams.filterType = filterType_t::FT_DEFAULT;
+		imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+		tr.bloomRenderFBOImage[ i ] = R_CreateImage( va( "_bloomRenderFBO%d", i ), nullptr, width, height, 1, &imageParams );
 	}
 }
 
@@ -2474,9 +2460,17 @@ static void R_CreateCurrentRenderImage()
 	width = glConfig.vidWidth;
 	height = glConfig.vidHeight;
 
-	tr.currentRenderImage[0] = R_CreateImage( "_currentRender[0]", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-	tr.currentRenderImage[1] = R_CreateImage( "_currentRender[1]", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-	tr.currentDepthImage = R_CreateImage( "_currentDepth", nullptr, width, height, 1, IF_NOPICMIP | IF_PACKED_DEPTH24_STENCIL8, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_NEAREST;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.currentRenderImage[0] = R_CreateImage( "_currentRender[0]", nullptr, width, height, 1, &imageParams );
+	tr.currentRenderImage[1] = R_CreateImage( "_currentRender[1]", nullptr, width, height, 1, &imageParams );
+
+	imageParams.bits |= IF_PACKED_DEPTH24_STENCIL8;
+
+	tr.currentDepthImage = R_CreateImage( "_currentDepth", nullptr, width, height, 1, &imageParams );
 }
 
 static void R_CreateDepthRenderImage()
@@ -2488,21 +2482,37 @@ static void R_CreateDepthRenderImage()
 
 	w = (width + TILE_SIZE_STEP1 - 1) >> TILE_SHIFT_STEP1;
 	h = (height + TILE_SIZE_STEP1 - 1) >> TILE_SHIFT_STEP1;
-	tr.depthtile1RenderImage = R_CreateImage( "_depthtile1Render", nullptr, w, h, 1, IF_NOPICMIP | IF_RGBA32F, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_ONE_CLAMP );
+
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP | IF_RGBA32F;
+	imageParams.filterType = filterType_t::FT_NEAREST;
+	imageParams.wrapType = wrapTypeEnum_t::WT_ONE_CLAMP;
+
+	tr.depthtile1RenderImage = R_CreateImage( "_depthtile1Render", nullptr, w, h, 1, &imageParams );
 
 	w = (width + TILE_SIZE - 1) >> TILE_SHIFT;
 	h = (height + TILE_SIZE - 1) >> TILE_SHIFT;
-	tr.depthtile2RenderImage = R_CreateImage( "_depthtile2Render", nullptr, w, h, 1, IF_NOPICMIP | IF_RGBA32F, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.depthtile2RenderImage = R_CreateImage( "_depthtile2Render", nullptr, w, h, 1, &imageParams );
 
 	if ( glConfig2.textureIntegerAvailable ) {
-		tr.lighttileRenderImage = R_Create3DImage( "_lighttileRender", nullptr, w, h, 4, IF_NOPICMIP | IF_RGBA32UI, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+		imageParams.bits = IF_NOPICMIP | IF_RGBA32UI;
+
+		tr.lighttileRenderImage = R_Create3DImage( "_lighttileRender", nullptr, w, h, 4, &imageParams );
 	} else {
-		tr.lighttileRenderImage = R_Create3DImage( "_lighttileRender", nullptr, w, h, 4, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+		imageParams.bits = IF_NOPICMIP;
+
+		tr.lighttileRenderImage = R_Create3DImage( "_lighttileRender", nullptr, w, h, 4, &imageParams );
 	}
 
 	if( !glConfig2.uniformBufferObjectAvailable ) {
 		w = 64; h = 3 * MAX_REF_LIGHTS / w;
-		tr.dlightImage = R_CreateImage("_dlightImage", nullptr, w, h, 4, IF_NOPICMIP | IF_RGBA32F, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	
+		imageParams.bits = IF_NOPICMIP | IF_RGBA32F;
+
+		tr.dlightImage = R_CreateImage("_dlightImage", nullptr, w, h, 4, &imageParams );
 	}
 }
 
@@ -2513,7 +2523,12 @@ static void R_CreatePortalRenderImage()
 	width = glConfig.vidWidth;
 	height = glConfig.vidHeight;
 
-	tr.portalRenderImage = R_CreateImage( "_portalRender", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_NEAREST;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.portalRenderImage = R_CreateImage( "_portalRender", nullptr, width, height, 1, &imageParams );
 }
 
 static void R_CreateDepthToColorFBOImages()
@@ -2523,10 +2538,13 @@ static void R_CreateDepthToColorFBOImages()
 	width = glConfig.vidWidth;
 	height = glConfig.vidHeight;
 
-	{
-		tr.depthToColorBackFacesFBOImage = R_CreateImage( "_depthToColorBackFacesFBORender", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-		tr.depthToColorFrontFacesFBOImage = R_CreateImage( "_depthToColorFrontFacesFBORender", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
-	}
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_NEAREST;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.depthToColorBackFacesFBOImage = R_CreateImage( "_depthToColorBackFacesFBORender", nullptr, width, height, 1, &imageParams );
+	tr.depthToColorFrontFacesFBOImage = R_CreateImage( "_depthToColorFrontFacesFBORender", nullptr, width, height, 1, &imageParams );
 }
 
 // Tr3B: clean up this mess some day ...
@@ -2537,11 +2555,16 @@ static void R_CreateDownScaleFBOImages()
 	width = glConfig.vidWidth * 0.25f;
 	height = glConfig.vidHeight * 0.25f;
 
-	tr.downScaleFBOImage_quarter = R_CreateImage( "_downScaleFBOImage_quarter", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_NEAREST;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.downScaleFBOImage_quarter = R_CreateImage( "_downScaleFBOImage_quarter", nullptr, width, height, 1, &imageParams );
 
 	width = height = 64;
 
-	tr.downScaleFBOImage_64x64 = R_CreateImage( "_downScaleFBOImage_64x64", nullptr, width, height, 1, IF_NOPICMIP, filterType_t::FT_NEAREST, wrapTypeEnum_t::WT_CLAMP );
+	tr.downScaleFBOImage_64x64 = R_CreateImage( "_downScaleFBOImage_64x64", nullptr, width, height, 1, &imageParams );
 }
 
 // *INDENT-OFF*
@@ -2598,12 +2621,17 @@ static void R_CreateShadowMapFBOImage()
 		filter = filterType_t::FT_NEAREST;
 	}
 
+	imageParams_t imageParams = {};
+	imageParams.bits = format;
+	imageParams.filterType = filter;
+	imageParams.wrapType = wrapTypeEnum_t::WT_ONE_CLAMP;
+
 	for ( i = 0; i < numShadowMaps; i++ )
 	{
 		width = height = shadowMapResolutions[ i % MAX_SHADOWMAPS ];
 
-		tr.shadowMapFBOImage[ i ] = R_CreateImage( va( "_shadowMapFBO%d", i ), nullptr, width, height, 1, format, filter, wrapTypeEnum_t::WT_ONE_CLAMP );
-		tr.shadowClipMapFBOImage[ i ] = R_CreateImage( va( "_shadowClipMapFBO%d", i ), nullptr, width, height, 1, format, filter, wrapTypeEnum_t::WT_ONE_CLAMP );
+		tr.shadowMapFBOImage[ i ] = R_CreateImage( va( "_shadowMapFBO%d", i ), nullptr, width, height, 1, &imageParams );
+		tr.shadowClipMapFBOImage[ i ] = R_CreateImage( va( "_shadowClipMapFBO%d", i ), nullptr, width, height, 1, &imageParams );
 	}
 
 	// sun shadow maps
@@ -2611,8 +2639,8 @@ static void R_CreateShadowMapFBOImage()
 	{
 		width = height = sunShadowMapResolutions[ i % MAX_SHADOWMAPS ];
 
-		tr.sunShadowMapFBOImage[ i ] = R_CreateImage( va( "_sunShadowMapFBO%d", i ), nullptr, width, height, 1, format, filter, wrapTypeEnum_t::WT_ONE_CLAMP );
-		tr.sunShadowClipMapFBOImage[ i ] = R_CreateImage( va( "_sunShadowClipMapFBO%d", i ), nullptr, width, height, 1, format, filter, wrapTypeEnum_t::WT_ONE_CLAMP );
+		tr.sunShadowMapFBOImage[ i ] = R_CreateImage( va( "_sunShadowMapFBO%d", i ), nullptr, width, height, 1, &imageParams );
+		tr.sunShadowClipMapFBOImage[ i ] = R_CreateImage( va( "_sunShadowClipMapFBO%d", i ), nullptr, width, height, 1, &imageParams );
 	}
 }
 
@@ -2671,12 +2699,17 @@ static void R_CreateShadowCubeFBOImage()
 		filter = filterType_t::FT_NEAREST;
 	}
 
+	imageParams_t imageParams = {};
+	imageParams.bits = format;
+	imageParams.filterType = filter;
+	imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
 	for ( j = 0; j < 5; j++ )
 	{
 		width = height = shadowMapResolutions[ j ];
 
-		tr.shadowCubeFBOImage[ j ] = R_CreateCubeImage( va( "_shadowCubeFBO%d", j ), nullptr, width, height, format, filter, wrapTypeEnum_t::WT_EDGE_CLAMP );
-		tr.shadowClipCubeFBOImage[ j ] = R_CreateCubeImage( va( "_shadowClipCubeFBO%d", j ), nullptr, width, height, format, filter, wrapTypeEnum_t::WT_EDGE_CLAMP );
+		tr.shadowCubeFBOImage[ j ] = R_CreateCubeImage( va( "_shadowCubeFBO%d", j ), nullptr, width, height, &imageParams );
+		tr.shadowClipCubeFBOImage[ j ] = R_CreateCubeImage( va( "_shadowClipCubeFBO%d", j ), nullptr, width, height, &imageParams );
 	}
 }
 
@@ -2698,8 +2731,13 @@ static void R_CreateBlackCubeImage()
 		Com_Memset( data[ i ], 0, width * height * 4 );
 	}
 
-	tr.blackCubeImage = R_CreateCubeImage( "_blackCube", ( const byte ** ) data, width, height, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
-	tr.autoCubeImage = R_CreateCubeImage( "_autoCube", ( const byte ** ) data, width, height, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_LINEAR;
+	imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
+	tr.blackCubeImage = R_CreateCubeImage( "_blackCube", ( const byte ** ) data, width, height, &imageParams );
+	tr.autoCubeImage = R_CreateCubeImage( "_autoCube", ( const byte ** ) data, width, height, &imageParams );
 
 	for ( i = 5; i >= 0; i-- )
 	{
@@ -2725,7 +2763,12 @@ static void R_CreateWhiteCubeImage()
 		Com_Memset( data[ i ], 0xFF, width * height * 4 );
 	}
 
-	tr.whiteCubeImage = R_CreateCubeImage( "_whiteCube", ( const byte ** ) data, width, height, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_EDGE_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_LINEAR;
+	imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
+	tr.whiteCubeImage = R_CreateCubeImage( "_whiteCube", ( const byte ** ) data, width, height, &imageParams );
 
 	for ( i = 5; i >= 0; i-- )
 	{
@@ -2758,13 +2801,12 @@ static void R_CreateColorGradeImage()
 		}
 	}
 
-	tr.colorGradeImage = R_Create3DImage( "_colorGrade", data,
-					      REF_COLORGRADEMAP_SIZE,
-					      REF_COLORGRADEMAP_SIZE,
-					      REF_COLORGRADE_SLOTS * REF_COLORGRADEMAP_SIZE,
-					      IF_NOPICMIP | IF_NOLIGHTSCALE,
-					      filterType_t::FT_LINEAR,
-						  wrapTypeEnum_t::WT_EDGE_CLAMP );
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP | IF_NOLIGHTSCALE;
+	imageParams.filterType = filterType_t::FT_LINEAR;
+	imageParams.wrapType = wrapTypeEnum_t::WT_EDGE_CLAMP;
+
+	tr.colorGradeImage = R_Create3DImage( "_colorGrade", data, REF_COLORGRADEMAP_SIZE, REF_COLORGRADEMAP_SIZE, REF_COLORGRADE_SLOTS * REF_COLORGRADEMAP_SIZE, &imageParams );
 
 	ri.Hunk_FreeTempMemory( data );
 }
@@ -2787,13 +2829,17 @@ void R_CreateBuiltinImages()
 
 	// we use a solid white image instead of disabling texturing
 	Com_Memset( data, 255, sizeof( data ) );
-	tr.whiteImage = R_CreateImage( "_white", ( const byte ** ) &dataPtr,
-				       8, 8, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_REPEAT );
+
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_LINEAR;
+	imageParams.wrapType = wrapTypeEnum_t::WT_REPEAT;
+
+	tr.whiteImage = R_CreateImage( "_white", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 
 	// we use a solid black image instead of disabling texturing
 	Com_Memset( data, 0, sizeof( data ) );
-	tr.blackImage = R_CreateImage( "_black", ( const byte ** ) &dataPtr,
-				       8, 8, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_REPEAT );
+	tr.blackImage = R_CreateImage( "_black", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 
 	// red
 	for ( x = DEFAULT_SIZE * DEFAULT_SIZE, out = &data[0][0][0]; x; --x, out += 4 )
@@ -2802,8 +2848,7 @@ void R_CreateBuiltinImages()
 		out[ 0 ] = out[ 3 ] = 255;
 	}
 
-	tr.redImage = R_CreateImage( "_red", ( const byte ** ) &dataPtr,
-				     8, 8, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_REPEAT );
+	tr.redImage = R_CreateImage( "_red", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 
 	// green
 	for ( x = DEFAULT_SIZE * DEFAULT_SIZE, out = &data[0][0][0]; x; --x, out += 4 )
@@ -2812,8 +2857,7 @@ void R_CreateBuiltinImages()
 		out[ 1 ] = out[ 3 ] = 255;
 	}
 
-	tr.greenImage = R_CreateImage( "_green", ( const byte ** ) &dataPtr,
-				       8, 8, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_REPEAT );
+	tr.greenImage = R_CreateImage( "_green", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 
 	// blue
 	for ( x = DEFAULT_SIZE * DEFAULT_SIZE, out = &data[0][0][0]; x; --x, out += 4 )
@@ -2822,8 +2866,7 @@ void R_CreateBuiltinImages()
 		out[ 2 ] = out[ 3 ] = 255;
 	}
 
-	tr.blueImage = R_CreateImage( "_blue", ( const byte ** ) &dataPtr,
-				      8, 8, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_REPEAT );
+	tr.blueImage = R_CreateImage( "_blue", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 
 	// generate a default normalmap with a fully opaque heightmap (no displacement)
 	for ( x = DEFAULT_SIZE * DEFAULT_SIZE, out = &data[0][0][0]; x; --x, out += 4 )
@@ -2833,8 +2876,9 @@ void R_CreateBuiltinImages()
 		out[ 3 ] = 255;
 	}
 
-	tr.flatImage = R_CreateImage( "_flat", ( const byte ** ) &dataPtr,
-				      8, 8, 1, IF_NOPICMIP | IF_NORMALMAP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_REPEAT );
+	imageParams.bits = IF_NOPICMIP | IF_NORMALMAP;
+
+	tr.flatImage = R_CreateImage( "_flat", ( const byte ** ) &dataPtr, 8, 8, 1, &imageParams );
 
 	out = &data[ 0 ][ 0 ][ 0 ];
 
@@ -2857,10 +2901,10 @@ void R_CreateBuiltinImages()
 		}
 	}
 
-	tr.quadraticImage =
-		R_CreateImage( "_quadratic", ( const byte ** ) &dataPtr,
-			       DEFAULT_SIZE, DEFAULT_SIZE, 1, IF_NOPICMIP, filterType_t::FT_LINEAR,
-					   wrapTypeEnum_t::WT_CLAMP );
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	tr.quadraticImage = R_CreateImage( "_quadratic", ( const byte ** ) &dataPtr, DEFAULT_SIZE, DEFAULT_SIZE, 1, &imageParams );
 
 	R_CreateRandomNormalsImage();
 	R_CreateFogImage();
@@ -2981,5 +3025,11 @@ qhandle_t RE_GenerateTexture( const byte *pic, int width, int height )
 {
 	const char *name = va( "rocket%d", numTextures++ );
 	R_SyncRenderThread();
-	return RE_RegisterShaderFromImage( name, R_CreateImage( name, &pic, width, height, 1, IF_NOPICMIP, filterType_t::FT_LINEAR, wrapTypeEnum_t::WT_CLAMP ) );
+
+	imageParams_t imageParams = {};
+	imageParams.bits = IF_NOPICMIP;
+	imageParams.filterType = filterType_t::FT_LINEAR;
+	imageParams.wrapType = wrapTypeEnum_t::WT_CLAMP;
+
+	return RE_RegisterShaderFromImage( name, R_CreateImage( name, &pic, width, height, 1, &imageParams ) );
 }

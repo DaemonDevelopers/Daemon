@@ -149,6 +149,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 	cvar_t      *r_singleShader;
 	cvar_t      *r_colorMipLevels;
 	cvar_t      *r_picmip;
+	cvar_t      *r_imageMinDimension;
+	cvar_t      *r_imageMaxDimension;
 	cvar_t      *r_finish;
 	cvar_t      *r_clear;
 	cvar_t      *r_swapInterval;
@@ -945,6 +947,8 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 
 		Log::Debug("texturemode: %s", r_textureMode->string );
 		Log::Debug("picmip: %d", r_picmip->integer );
+		Log::Debug("imageMinDimension: %d", r_imageMinDimension->integer );
+		Log::Debug("imageMaxDimension: %d", r_imageMaxDimension->integer );
 
 		if ( glConfig.driverType == glDriverType_t::GLDRV_OPENGL3 )
 		{
@@ -1045,7 +1049,10 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		r_arb_gpu_shader5 = ri.Cvar_Get( "r_arb_gpu_shader5", "1", CVAR_CHEAT | CVAR_LATCH );
 
 		r_picmip = ri.Cvar_Get( "r_picmip", "0",  CVAR_LATCH | CVAR_ARCHIVE );
-		AssertCvarRange( r_picmip, 0, 3, true );
+		r_imageMinDimension = ri.Cvar_Get( "r_imageMinDimension", "0",  CVAR_LATCH | CVAR_ARCHIVE );
+		r_imageMaxDimension = ri.Cvar_Get( "r_imageMaxDimension", "0",  CVAR_LATCH | CVAR_ARCHIVE );
+		r_imageMinDimension = ri.Cvar_Get( "r_imageMinDimension", "0",  CVAR_LATCH | CVAR_ARCHIVE );
+		r_imageMaxDimension = ri.Cvar_Get( "r_imageMaxDimension", "0",  CVAR_LATCH | CVAR_ARCHIVE );
 		r_colorMipLevels = ri.Cvar_Get( "r_colorMipLevels", "0", CVAR_LATCH );
 		r_colorbits = ri.Cvar_Get( "r_colorbits", "0",  CVAR_LATCH );
 		r_alphabits = ri.Cvar_Get( "r_alphabits", "0",  CVAR_LATCH );
