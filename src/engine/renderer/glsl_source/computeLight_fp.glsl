@@ -214,7 +214,7 @@ void computeDLights( vec3 P, vec3 normal, vec3 viewDir, vec4 diffuse, vec4 mater
 #if defined(r_showLightTiles)
         if (numLights > 0.0)
         {
-          color = vec4(numLights/(lightsPerLayer*numLayers), numLights/(lightsPerLayer*numLayers), numLights/(lightsPerLayer*numLayers), 1.0);
+          color.rgb = vec3(numLights/(lightsPerLayer*numLayers));
         }
 #endif
         return;
@@ -231,7 +231,7 @@ void computeDLights( vec3 P, vec3 normal, vec3 viewDir, vec4 diffuse, vec4 mater
 #if defined(r_showLightTiles)
   if (numLights > 0.0)
   {
-    color = vec4(numLights/(lightsPerLayer*numLayers), numLights/(lightsPerLayer*numLayers), numLights/(lightsPerLayer*numLayers), 1.0);
+    color.rgb = vec3(numLights/(lightsPerLayer*numLayers));
   }
 #endif
 }
