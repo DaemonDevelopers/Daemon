@@ -37,7 +37,6 @@ static Log::Logger logger("glconfig", "", Log::Level::NOTICE);
 
 SDL_Window         *window = nullptr;
 static SDL_GLContext glContext = nullptr;
-static int colorBits = 0;
 
 #ifdef USE_SMP
 static void GLimp_SetCurrentContext( bool enable )
@@ -483,9 +482,6 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 {
 	const char  *glstring;
 	int         perChannelColorBits;
-	int         alphaBits, depthBits, stencilBits;
-	int         samples;
-	int         i = 0;
 	SDL_Surface *icon = nullptr;
 	SDL_DisplayMode desktopMode;
 	Uint32      flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
@@ -576,8 +572,29 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 		logger.Warn( "GLEW version < 2.0.0 doesn't support GL core profiles" );
 	}
 
+	int colorBits = std::max( 0, r_colorbits->integer );
+	// int alphaBits = std::max( 0, r_alphabits->integer );
+	int depthBits = std::max( 0, r_depthbits->integer );
+	int stencilBits = std::max( 0, r_stencilbits->integer );
+	int latched_samples = std::max( 0, r_ext_multisample->integer );
+
+	if ( colorBits == 0 )
+	{
+		colorBits = 24;
+	}
+
+	if ( colorBits > 24 )
+	{
+		logger.Warn( "Color bitness %d set by r_colorbits can't be greater to 24, fallback to 24", colorBits );
+		colorBits = 24;
+	}
+
+	int samples;
+
 	do
 	{
+		samples = latched_samples;
+
 		if ( glContext != nullptr )
 		{
 			SDL_GL_DeleteContext( glContext );
@@ -604,54 +621,51 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 			flags |= SDL_WINDOW_BORDERLESS;
 		}
 
-		colorBits = r_colorbits->integer;
+		const int coreProfile = 0;
+		const int compatProfile = 1;
+		const int glProfiles[ 4 ][ 2 ] = {
+			// GL profile, framebuffer color bitness
+			{ coreProfile,   24 },
+			{ compatProfile, 24 },
+			{ coreProfile,   16 },
+			{ compatProfile, 16 }
+		};
 
-		if ( ( !colorBits ) || ( colorBits >= 32 ) )
+		for ( const int* glProfile : glProfiles )
 		{
-			colorBits = 24;
-		}
+			int major = std::max( 0, r_glMajorVersion->integer );
+			int minor = std::max( 0, r_glMinorVersion->integer );
 
-		alphaBits = r_alphabits->integer;
+			int testCore = glProfile[ 0 ] == coreProfile;
+			int testColorBits = glProfile[ 1 ];
 
-		if ( alphaBits < 0 )
-		{
-			alphaBits = 0;
-		}
+			const char* profileName = testCore ? "core" : "compatibility";
 
-		depthBits = r_depthbits->integer;
+			logger.Debug( "Attempting to create %d-bit color framebuffer with %s GL profile", testColorBits, profileName );
 
-		if ( !depthBits )
-		{
-			depthBits = 24;
-		}
-
-		stencilBits = r_stencilbits->integer;
-		samples = r_ext_multisample->integer;
-
-		for ( i = 0; i < 4; i++ )
-		{
-			int testColorBits, testCore;
-			int major = r_glMajorVersion->integer;
-			int minor = r_glMinorVersion->integer;
-
-			// 0 - 24 bit color, core
-			// 1 - 24 bit color, compat
-			// 2 - 16 bit color, core
-			// 3 - 16 bit color, compat
-			testColorBits = (i >= 2) ? 16 : 24;
-			testCore = ((i & 1) == 0);
-
-			if( testCore && !Q_stricmp(r_glProfile->string, "compat") )
+			if ( testCore && !Q_stricmp( r_glProfile->string, "compat" ) )
+			{
+				logger.Debug( "Compatibility profile is forced by r_glProfile" );
 				continue;
+			}
 
-			if( testCore && GLEWmajor < 2 )
+			if ( testCore && GLEWmajor < 2 )
+			{
+				logger.Debug( "GLEW version < 2.0.0 doesn't support GL core profiles" );
 				continue;
+			}
 
-			if( !testCore && !Q_stricmp(r_glProfile->string, "core") )
+			if ( !testCore && !Q_stricmp( r_glProfile->string, "core" ) )
+			{
+				logger.Debug( "Core profile is forced by r_glProfile" );
 				continue;
+			}
 
-			if( testColorBits > colorBits )
+			if ( testColorBits > colorBits )
+			{
+				logger.Debug( "Color framebuffer bitness %d is forced by r_colorbits", testColorBits );
 				continue;
+			}
 
 			if ( testColorBits == 24 )
 			{
@@ -672,27 +686,51 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 				SDL_GL_SetAttribute( SDL_GL_ACCELERATED_VISUAL, 1 );
 			}
 
-			if( testCore && (major < 3 || (major == 3 && minor < 2)) ) {
-				major = 3;
-				minor = 2;
+			/* GL core profile was introduced in GL 3.2,
+			GL version 3.0 and 3.1 are not core.
+
+			Minimum non-core GL version supported is 2.1. */
+
+			if ( testCore )
+			{
+				if ( major == 0 && minor == 0 )
+				{
+					major = 3;
+					minor = 2;
+				}
+				else if ( major < 3 || ( major == 3 && minor < 2 ) )
+				{
+					logger.Warn( "Invalid %d.%d GL core version", major, minor );
+
+					major = 3;
+					minor = 2;
+
+					logger.Debug( "Fallback on %d.%d GL core version", major, minor );
+				}
+			}
+			else 
+			{
+				if ( major == 0 && minor == 0 )
+				{
+					major = 2;
+					minor = 1;
+				}
+				if ( major < 2 || ( major == 2 && minor < 1 ) ) {
+					logger.Warn( "Unsupported  %d.%d GL compatibility version", major, minor );
+
+					major = 2;
+					minor = 1;
+
+					logger.Debug( "Fallback on %d.%d GL compatibility version", major, minor );
+				}
 			}
 
-			if( major < 2 || (major == 2 && minor < 1)) {
-				major = 2;
-				minor = 1;
-			}
+			logger.Debug( "Attempting to create a GL context with %s profile and %d.%d version", profileName, major, minor );
 
 			SDL_GL_SetAttribute( SDL_GL_CONTEXT_MAJOR_VERSION, major );
 			SDL_GL_SetAttribute( SDL_GL_CONTEXT_MINOR_VERSION, minor );
 
-			if ( testCore )
-			{
-				SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE );
-			}
-			else
-			{
-				SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY );
-			}
+			SDL_GL_SetAttribute( SDL_GL_CONTEXT_PROFILE_MASK, testCore ? SDL_GL_CONTEXT_PROFILE_CORE : SDL_GL_CONTEXT_PROFILE_COMPATIBILITY );
 
 			if ( r_glDebugProfile->integer )
 			{
@@ -716,9 +754,10 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 
 			if ( !glContext )
 			{
-				logger.Warn("SDL_GL_CreateContext failed: %s\n", SDL_GetError() );
+				logger.Warn("SDL_GL_CreateContext failed: %s", SDL_GetError() );
 				continue;
 			}
+
 			SDL_GL_SetSwapInterval( r_swapInterval->integer );
 
 			// Fill window with a dark grey (#141414) background.
@@ -739,7 +778,7 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 
 		if ( samples && ( !glContext || !window ) )
 		{
-			r_ext_multisample->integer = 0;
+			latched_samples = 0;
 		}
 
 	} while ( ( !glContext || !window ) && samples );
