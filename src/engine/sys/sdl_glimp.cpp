@@ -324,6 +324,8 @@ cvar_t                     *r_centerWindow;
 cvar_t                     *r_displayIndex;
 cvar_t                     *r_sdlDriver;
 
+static void GLimp_DestroyWindow();
+
 /*
 ===============
 GLimp_Shutdown
@@ -351,11 +353,7 @@ void GLimp_Shutdown()
 		glContext = nullptr;
 	}
 
-	if ( window )
-	{
-		SDL_DestroyWindow( window );
-		window = nullptr;
-	}
+	GLimp_DestroyWindow();
 
 	SDL_QuitSubSystem( SDL_INIT_VIDEO );
 
@@ -473,30 +471,44 @@ static void GLimp_DetectAvailableModes()
 	}
 }
 
-/*
-===============
-GLimp_SetMode
-===============
-*/
-static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
+static bool GLimp_CreateWindow( bool fullscreen, bool noborder )
 {
-	const char  *glstring;
-	int         perChannelColorBits;
-	SDL_Surface *icon = nullptr;
-	SDL_DisplayMode desktopMode;
-	Uint32      flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
-	int         x, y;
-	GLenum      glewResult;
-	int         GLmajor, GLminor;
-	int         GLEWmajor, GLEWminor, GLEWmicro;
-
-	logger.Notice("Initializing OpenGL display" );
+	Uint32 flags = SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL;
 
 	if ( r_allowResize->integer )
 	{
 		flags |= SDL_WINDOW_RESIZABLE;
 	}
 
+	SDL_Surface *icon = nullptr;
+
+	icon = SDL_CreateRGBSurfaceFrom( ( void * ) CLIENT_WINDOW_ICON.pixel_data,
+		CLIENT_WINDOW_ICON.width,
+		CLIENT_WINDOW_ICON.height,
+		CLIENT_WINDOW_ICON.bytes_per_pixel * 8,
+		CLIENT_WINDOW_ICON.bytes_per_pixel * CLIENT_WINDOW_ICON.width,
+#ifdef Q3_LITTLE_ENDIAN
+		0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000
+#else
+		0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
+#endif
+	);
+
+	const char *windowType = nullptr;
+
+	// No need to set borderless flag when fullscreen
+	if ( fullscreen )
+	{
+		flags |= SDL_WINDOW_FULLSCREEN;
+		windowType = "fullscreen";
+	}
+	else if ( noborder )
+	{
+		flags |= SDL_WINDOW_BORDERLESS;
+		windowType = "borderless";
+	}
+
+	int x, y;
 	if ( r_centerWindow->integer )
 	{
 		// center window on specified display
@@ -509,17 +521,61 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 		y = SDL_WINDOWPOS_UNDEFINED_DISPLAY( r_displayIndex->integer );
 	}
 
-	icon = SDL_CreateRGBSurfaceFrom( ( void * ) CLIENT_WINDOW_ICON.pixel_data,
-			        CLIENT_WINDOW_ICON.width,
-			        CLIENT_WINDOW_ICON.height,
-			        CLIENT_WINDOW_ICON.bytes_per_pixel * 8,
-			        CLIENT_WINDOW_ICON.bytes_per_pixel * CLIENT_WINDOW_ICON.width,
-#ifdef Q3_LITTLE_ENDIAN
-			        0x000000FF, 0x0000FF00, 0x00FF0000, 0xFF000000
-#else
-			        0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF
-#endif
-					);
+	logger.Debug( "Attempting to create %s%sSDL %d×%d window",
+		windowType ? windowType : "",
+		windowType ? " ": "",
+		glConfig.vidWidth, glConfig.vidHeight );
+
+	window = SDL_CreateWindow( CLIENT_WINDOW_TITLE, x, y, glConfig.vidWidth, glConfig.vidHeight, flags );
+
+	if ( window )
+	{
+		int w, h;
+		SDL_GetWindowPosition( window, &x, &y );
+		SDL_GetWindowSize( window, &w, &h );
+		logger.Debug( "SDL window created at %d,%d with %d×%d size", x, y, w, h );
+	}
+	else
+	{
+		logger.Warn("SDL_CreateWindow failed: %s", SDL_GetError() );
+		return false;
+	}
+
+	SDL_SetWindowIcon( window, icon );
+
+	SDL_FreeSurface( icon );
+
+	return true;
+}
+
+static void GLimp_DestroyWindow()
+{
+	if ( window )
+	{
+		int x, y, w, h;
+		SDL_GetWindowPosition( window, &x, &y );
+		SDL_GetWindowSize( window, &w, &h );
+		logger.Debug("Destroying %d×%d SDL window at %d,%d", w, h, x, y );
+		SDL_DestroyWindow( window );
+		window = nullptr;
+	}
+}
+
+/*
+===============
+GLimp_SetMode
+===============
+*/
+static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
+{
+	const char  *glstring;
+	int         perChannelColorBits;
+	SDL_DisplayMode desktopMode;
+	GLenum      glewResult;
+	int         GLmajor, GLminor;
+	int         GLEWmajor, GLEWminor, GLEWmicro;
+
+	logger.Notice("Initializing OpenGL display" );
 
 	if ( SDL_GetDesktopDisplayMode( r_displayIndex->integer, &desktopMode ) == 0 )
 	{
@@ -591,6 +647,11 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 
 	int samples;
 
+	if ( !GLimp_CreateWindow( fullscreen, noborder ) )
+	{
+		return rserr_t::RSERR_OK;
+	}
+
 	do
 	{
 		samples = latched_samples;
@@ -601,25 +662,8 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 			glContext = nullptr;
 		}
 
-		if ( window != nullptr )
-		{
-			SDL_GetWindowPosition( window, &x, &y );
-			logger.Debug("Existing window at %dx%d before being destroyed", x, y );
-			SDL_DestroyWindow( window );
-			window = nullptr;
-		}
 		// we come back here if we couldn't get a visual and there's
 		// something we can switch off
-
-		if ( fullscreen )
-		{
-			flags |= SDL_WINDOW_FULLSCREEN;
-		}
-
-		if ( noborder )
-		{
-			flags |= SDL_WINDOW_BORDERLESS;
-		}
 
 		const int coreProfile = 0;
 		const int compatProfile = 1;
@@ -737,19 +781,6 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 				SDL_GL_SetAttribute( SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG );
 			}
 
-			if ( !window )
-			{
-				window = SDL_CreateWindow( CLIENT_WINDOW_TITLE, x, y, glConfig.vidWidth, glConfig.vidHeight, flags );
-
-				if ( !window )
-				{
-					logger.Warn("SDL_CreateWindow failed: %s\n", SDL_GetError() );
-					continue;
-				}
-			}
-
-			SDL_SetWindowIcon( window, icon );
-
 			glContext = SDL_GL_CreateContext( window );
 
 			if ( !glContext )
@@ -776,14 +807,12 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 			break;
 		}
 
-		if ( samples && ( !glContext || !window ) )
+		if ( samples && !glContext )
 		{
 			latched_samples = 0;
 		}
 
-	} while ( ( !glContext || !window ) && samples );
-
-	SDL_FreeSurface( icon );
+	} while ( !glContext && samples );
 
 	glewResult = glewInit();
 
