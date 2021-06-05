@@ -2668,7 +2668,7 @@ void CL_StartHunkUsers()
 	if ( !cls.rendererStarted )
 	{
 		CL_ShutdownRef();
-		Sys::Error( "Couldn't load a renderer" );
+		Sys::Error( "Couldn't load a renderer." );
 	}
 
 	if ( !Audio::Init() ) {

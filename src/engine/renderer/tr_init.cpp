@@ -965,11 +965,11 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 
 			if ( profile == GL_CONTEXT_CORE_PROFILE_BIT )
 			{
-				Log::Debug("%sHaving a core profile", Color::ToString( Color::Green ) );
+				Log::Notice("%sHaving a core profile", Color::ToString( Color::Green ) );
 			}
 			else
 			{
-				Log::Debug("%sHaving a compatibility profile", Color::ToString( Color::Red ) );
+				Log::Notice("%sHaving a compatibility profile", Color::ToString( Color::Red ) );
 			}
 
 			// check if context is forward compatible
