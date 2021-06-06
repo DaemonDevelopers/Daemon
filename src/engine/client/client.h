@@ -250,6 +250,7 @@ struct ping_t
 	int      start;
 	int      time;
 	char     info[ MAX_INFO_STRING ];
+	bool     toPing;
 };
 
 #define MAX_FEATLABEL_CHARS 32

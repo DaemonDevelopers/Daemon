@@ -678,8 +678,9 @@ void CL_MouseEvent( int dx, int dy );
 void CL_MousePosEvent( int dx, int dy);
 void CL_FocusEvent( bool focus );
 
-
 void CL_JoystickEvent( int axis, int value );
+
+void CL_IterateServerQueries();
 
 void CL_PacketEvent( const netadr_t& from, msg_t *msg );
 

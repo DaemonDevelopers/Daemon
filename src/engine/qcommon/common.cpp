@@ -432,6 +432,9 @@ void Com_EventLoop()
 
 	while (true)
 	{
+		// send next server query if it's time to
+		CL_IterateServerQueries();
+
 		auto ev = Com_GetEvent();
 
 		// if no more events are available

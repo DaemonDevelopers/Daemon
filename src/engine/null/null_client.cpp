@@ -57,6 +57,10 @@ void CL_Frame( int )
 {
 }
 
+void CL_IterateServerQueries()
+{
+}
+
 void CL_PacketEvent( const netadr_t& , msg_t*  )
 {
 }
