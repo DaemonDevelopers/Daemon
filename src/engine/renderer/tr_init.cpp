@@ -935,16 +935,24 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 
 		Log::Debug("\nPIXELFORMAT: color(%d-bits) Z(%d-bit) stencil(%d-bits)", glConfig.colorBits,
 		           glConfig.depthBits, glConfig.stencilBits );
-		Log::Debug("MODE: %d, %d x %d %s hz:", r_mode->integer, glConfig.vidWidth, glConfig.vidHeight,
-		           fsstrings[ r_fullscreen->integer == 1 ] );
 
-		if ( glConfig.displayFrequency )
 		{
-			Log::Debug("%d", glConfig.displayFrequency );
-		}
-		else
-		{
-			Log::Debug("N/A" );
+			std::string out;
+			if ( glConfig.displayFrequency )
+			{
+				out = Str::Format("%d", glConfig.displayFrequency );
+			}
+			else
+			{
+				out = "N/A";
+			}
+
+			Log::Debug("MODE: %d, %d x %d %s hz: %s",
+				r_mode->integer,
+				glConfig.vidWidth, glConfig.vidHeight,
+				fsstrings[ r_fullscreen->integer == 1 ],
+				out
+				);
 		}
 
 		Log::Debug("texturemode: %s", r_textureMode->string );
