@@ -653,17 +653,16 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 	if ( SDL_GetDesktopDisplayMode( r_displayIndex->integer, &desktopMode ) == 0 )
 	{
 		displayAspect = ( float ) desktopMode.w / ( float ) desktopMode.h;
-
 		logger.Notice("Display aspect: %.3f", displayAspect );
 	}
 	else
 	{
 		Com_Memset( &desktopMode, 0, sizeof( SDL_DisplayMode ) );
 
-		logger.Notice("Cannot determine display aspect (%s), assuming 1.333", SDL_GetError() );
+		logger.Notice("Cannot determine display aspect, assuming 1.333: %s", SDL_GetError() );
+		logger.Notice("Display aspect: 1.333");
 	}
 
-	logger.Notice("...setting mode %d:", mode );
 
 	if ( mode == -2 )
 	{
@@ -682,11 +681,12 @@ static rserr_t GLimp_SetMode( int mode, bool fullscreen, bool noborder )
 	}
 	else if ( !R_GetModeInfo( &glConfig.vidWidth, &glConfig.vidHeight, mode ) )
 	{
-		logger.Notice(" invalid mode" );
+		logger.Notice("Invalid mode %d", mode );
 		return rserr_t::RSERR_INVALID_MODE;
 	}
 
-	logger.Notice(" %d %d", glConfig.vidWidth, glConfig.vidHeight );
+	logger.Notice("...setting mode %d: %d×%d", mode, glConfig.vidWidth, glConfig.vidHeight );
+
 	// HACK: We want to set the current value, not the latched value
 	Cvar::ClearFlags("r_customwidth", CVAR_LATCH);
 	Cvar::ClearFlags("r_customheight", CVAR_LATCH);
@@ -1049,7 +1049,7 @@ static bool GLimp_StartDriverAndSetMode( int mode, bool fullscreen, bool noborde
 
 		if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE ) == -1 )
 		{
-			logger.Notice("SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE) failed (%s)", SDL_GetError() );
+			logger.Notice("SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE) failed: %s", SDL_GetError() );
 			return false;
 		}
 
@@ -1068,7 +1068,7 @@ static bool GLimp_StartDriverAndSetMode( int mode, bool fullscreen, bool noborde
 
 	if ( numDisplays <= 0 )
 	{
-		Sys::Error( "SDL_GetNumVideoDisplays failed (%s)\n", SDL_GetError() );
+		Sys::Error( "SDL_GetNumVideoDisplays failed: %s\n", SDL_GetError() );
 	}
 
 	AssertCvarRange( r_displayIndex, 0, numDisplays - 1, true );
