@@ -72,6 +72,7 @@ set(COMMONLIST
     ${COMMON_DIR}/math/Vector.h
     ${ENGINE_DIR}/qcommon/logging.h
     ${ENGINE_DIR}/qcommon/q_math.cpp
+    ${ENGINE_DIR}/qcommon/q_math.h
     ${ENGINE_DIR}/qcommon/q_shared.cpp
     ${ENGINE_DIR}/qcommon/q_shared.h
     ${ENGINE_DIR}/qcommon/q_unicode.cpp

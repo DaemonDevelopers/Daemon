@@ -2367,18 +2367,6 @@ void Com_ClientListParse( clientList_t *list, const char *s )
 	sscanf( s, "%8x%8x", &list->hi, &list->lo );
 }
 
-/*
-================
-VectorMatrixMultiply
-================
-*/
-void VectorMatrixMultiply( const vec3_t p, vec3_t m[ 3 ], vec3_t out )
-{
-	out[ 0 ] = m[ 0 ][ 0 ] * p[ 0 ] + m[ 1 ][ 0 ] * p[ 1 ] + m[ 2 ][ 0 ] * p[ 2 ];
-	out[ 1 ] = m[ 0 ][ 1 ] * p[ 0 ] + m[ 1 ][ 1 ] * p[ 1 ] + m[ 2 ][ 1 ] * p[ 2 ];
-	out[ 2 ] = m[ 0 ][ 2 ] * p[ 0 ] + m[ 1 ][ 2 ] * p[ 1 ] + m[ 2 ][ 2 ] * p[ 2 ];
-}
-
 void Q_ParseNewlines( char *dest, const char *src, int destsize )
 {
 	for ( ; *src && destsize > 1; src++, destsize-- )
