@@ -1490,25 +1490,67 @@ success:
 
 	Q_strncpyz( glConfig.version_string, ( char * ) glGetString( GL_VERSION ), sizeof( glConfig.version_string ) );
 
+	glConfig.extensions_string[ 0 ] = '\0';
+
 	if ( glConfig.driverType == glDriverType_t::GLDRV_OPENGL3 )
 	{
 		GLint numExts, i;
 
 		glGetIntegerv( GL_NUM_EXTENSIONS, &numExts );
 
-		glConfig.extensions_string[ 0 ] = '\0';
+		logger.Debug( "Found %d OpenGL extensions.", numExts );
+
+		std::string extensions_string = "";
+
 		for ( i = 0; i < numExts; ++i )
 		{
-			if ( i != 0 )
+			char* s = ( char * ) glGetStringi( GL_EXTENSIONS, i );
+
+			/* Check for errors when fetching string.
+
+			> If an error is generated, glGetString returns 0. 
+			> -- https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glGetString.xhtml */
+			if ( s == nullptr )
 			{
-				Q_strcat( glConfig.extensions_string, sizeof( glConfig.extensions_string ), ( char * ) " " );
+				logger.Warn( "Error when fetching OpenGL extension list." );
 			}
-			Q_strcat( glConfig.extensions_string, sizeof( glConfig.extensions_string ), ( char * ) glGetStringi( GL_EXTENSIONS, i ) );
+			else
+			{
+				std::string extension_name = s;
+
+				if ( i != 0 )
+				{
+					extensions_string += " ";
+				}
+
+				extensions_string += extension_name;
+			}
 		}
+
+		logger.Debug( "OpenGL extensions found: %s", extensions_string.c_str() );
+
+		Q_strncpyz( glConfig.extensions_string, extensions_string.c_str(), sizeof( glConfig.extensions_string ) );
 	}
 	else
 	{
-		Q_strncpyz( glConfig.extensions_string, ( char * ) glGetString( GL_EXTENSIONS ), sizeof( glConfig.extensions_string ) );
+		char* s = ( char * ) glGetString( GL_EXTENSIONS );
+
+		if ( s == nullptr )
+		{
+			logger.Warn( "Error when fetching OpenGL extension list." );
+		}
+		else
+		{
+			std::string extensions_string = ( char * ) glGetString( GL_EXTENSIONS );
+
+			int numExts = std::count(extensions_string.begin(), extensions_string.end(), ' ');
+
+			logger.Debug( "Found %d OpenGL extensions.", numExts );
+
+			logger.Debug( "OpenGL extensions found: %s", extensions_string.c_str() );
+
+			Q_strncpyz( glConfig.extensions_string, extensions_string.c_str(), sizeof( glConfig.extensions_string ) );
+		}
 	}
 
 	if ( Q_stristr( glConfig.renderer_string, "amd " ) ||

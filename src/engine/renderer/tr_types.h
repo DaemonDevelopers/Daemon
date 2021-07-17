@@ -335,7 +335,7 @@ struct glconfig_t
 	char                 renderer_string[ MAX_STRING_CHARS ];
 	char                 vendor_string[ MAX_STRING_CHARS ];
 	char                 version_string[ MAX_STRING_CHARS ];
-	char                 extensions_string[ MAX_STRING_CHARS * 4 ]; // TTimo - bumping, some cards have a big extension string
+	char                 extensions_string[ MAX_STRING_CHARS * 8 ]; // TTimo - bumping, some cards have a big extension string
 
 	int                  maxTextureSize; // queried from GL
 	int                  unused;
