@@ -1047,9 +1047,24 @@ static bool GLimp_StartDriverAndSetMode( int mode, bool fullscreen, bool noborde
 		logger.Notice("SDL_Init( SDL_INIT_VIDEO )... " );
 		logger.Notice("Using SDL Version %u.%u.%u", v.major, v.minor, v.patch );
 
-		if ( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE ) == -1 )
+		/* SDL_INIT_NOPARACHUTE flag is removed.
+
+		> SDL_INIT_NOPARACHUTE: compatibility; this flag is ignored
+		> -- https://wiki.libsdl.org/SDL_Init
+
+		It is recommended to test for negative value and not just -1.
+
+		> Returns 0 on success or a negative error code on failure;
+		> call SDL_GetError() for more information.
+		> -- https://wiki.libsdl.org/SDL_Init
+
+		the SDL_GetError page also gives a sample of code testing for < 0
+		> if (SDL_Init(SDL_INIT_EVERYTHING) < 0)
+		> -- https://wiki.libsdl.org/SDL_GetError */
+
+		if ( SDL_Init( SDL_INIT_VIDEO ) < 0 )
 		{
-			logger.Notice("SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE) failed: %s", SDL_GetError() );
+			logger.Notice("SDL_Init( SDL_INIT_VIDEO ) failed: %s", SDL_GetError() );
 			return false;
 		}
 
