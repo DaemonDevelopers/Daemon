@@ -381,7 +381,7 @@ static void MakeSkyVec( float s, float t, int axis, vec2_t outSt, vec4_t outXYZ 
 	int        j, k;
 	float      boxSize;
 
-	boxSize = backEnd.viewParms.zFar / 1.75F; // div sqrt(3)
+	boxSize = backEnd.viewParms.zFar / M_ROOT3;
 	b[ 0 ] = s * boxSize;
 	b[ 1 ] = t * boxSize;
 	b[ 2 ] = boxSize;
