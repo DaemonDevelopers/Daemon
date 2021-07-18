@@ -589,19 +589,13 @@ static void FillCloudBox( int stage )
 {
 	int i;
 
-	for ( i = 0; i < 6; i++ )
+	// Iterate from 0 to 5 and not from 0 to 6,
+	// we still don't want to draw the bottom, even if fullClouds.
+	for ( i = 0; i < 5; i++ )
 	{
 		int   sky_mins_subd[ 2 ], sky_maxs_subd[ 2 ];
 		int   s, t;
 		const int MIN_T{-HALF_SKY_SUBDIVISIONS};
-
-		{
-			// still don't want to draw the bottom, even if fullClouds
-			if ( i == 5 )
-			{
-				continue;
-			}
-		}
 
 		sky_mins[ 0 ][ i ] = floor( sky_mins[ 0 ][ i ] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
 		sky_mins[ 1 ][ i ] = floor( sky_mins[ 1 ][ i ] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
