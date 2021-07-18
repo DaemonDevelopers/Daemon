@@ -310,15 +310,20 @@ static void ClipSkyPolygon( int nump, vec3_t vecs, int stage )
 ClearSkyBox
 ==============
 */
-static void ClearSkyBox()
+inline void ClearSkyBox()
 {
-	int i;
+	static const float mins[ 2 ][ 6 ] = {
+		{ 9999, 9999, 9999, 9999, 9999, 9999 },
+		{ 9999, 9999, 9999, 9999, 9999, 9999 }
+	};
 
-	for ( i = 0; i < 6; i++ )
-	{
-		sky_mins[ 0 ][ i ] = sky_mins[ 1 ][ i ] = 9999;
-		sky_maxs[ 0 ][ i ] = sky_maxs[ 1 ][ i ] = -9999;
-	}
+	static const float maxs[ 2 ][ 6 ] = {
+		{ -9999, -9999, -9999, -9999, -9999, -9999 },
+		{ -9999, -9999, -9999, -9999, -9999, -9999 }
+	};
+
+	memcpy( sky_mins, mins, sizeof( mins ) );
+	memcpy( sky_maxs, maxs, sizeof( maxs ) );
 }
 
 /*
