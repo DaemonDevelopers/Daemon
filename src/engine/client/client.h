@@ -269,7 +269,6 @@ struct serverInfo_t
 	int      maxPing;
 	int      ping;
 	bool visible;
-	int      friendlyFire; // NERVE - SMF
 	int      needpass;
 	char     gameName[ MAX_NAME_LENGTH ]; // Arnout
 };

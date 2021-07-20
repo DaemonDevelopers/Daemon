@@ -3045,7 +3045,6 @@ static void CL_SetServerInfo( serverInfo_t *server, const char *info, int ping )
 			server->netType = Util::enum_cast<netadrtype_t>(atoi(Info_ValueForKey(info, "nettype")));
 			server->minPing = atoi( Info_ValueForKey( info, "minping" ) );
 			server->maxPing = atoi( Info_ValueForKey( info, "maxping" ) );
-			server->friendlyFire = atoi( Info_ValueForKey( info, "g_friendlyFire" ) );   // NERVE - SMF
 			server->needpass = atoi( Info_ValueForKey( info, "g_needpass" ) );   // NERVE - SMF
 			Q_strncpyz( server->gameName, Info_ValueForKey( info, "gamename" ), MAX_NAME_LENGTH );   // Arnout
 		}
@@ -3197,7 +3196,6 @@ void CL_ServerInfoPacket( const netadr_t& from, msg_t *msg )
 	cls.localServers[ i ].ping = -1;
 	cls.localServers[ i ].game[ 0 ] = '\0';
 	cls.localServers[ i ].netType = from.type;
-	cls.localServers[ i ].friendlyFire = 0; // NERVE - SMF
 	cls.localServers[ i ].needpass = 0;
 	cls.localServers[ i ].gameName[ 0 ] = '\0'; // Arnout
 

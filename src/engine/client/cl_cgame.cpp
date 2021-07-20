@@ -441,7 +441,6 @@ static void LAN_GetServerInfo( int source, int n, char *buf, int buflen )
 		Info_SetValueForKey( info, "game", server->game, false );
 		Info_SetValueForKey( info, "nettype", Util::enum_str(server->netType), false );
 		Info_SetValueForKey( info, "addr", NET_AdrToStringwPort( server->adr ), false );
-		Info_SetValueForKey( info, "friendlyFire", va( "%i", server->friendlyFire ), false );   // NERVE - SMF
 		Info_SetValueForKey( info, "needpass", va( "%i", server->needpass ), false );   // NERVE - SMF
 		Info_SetValueForKey( info, "gamename", server->gameName, false );  // Arnout
 		Q_strncpyz( buf, info, buflen );
