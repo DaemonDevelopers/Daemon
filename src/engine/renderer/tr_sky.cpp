@@ -779,6 +779,22 @@ void Tess_StageIteratorSky()
 
 	if ( r_fastsky->integer )
 	{
+		/* Clear color buffer but nothing else, even if r_clear is disabled,
+		there can be issues when enabling complete clearing by default
+		with Nvidia proprietary drivers. So clearing the color buffer there
+		prevents void effect in skipped sky without needing to enable r_clear.
+
+		Anyway, we may want to do it (and even force a color) on purpose,
+		this would mean clearing is the explicit way to draw the fast sky.
+		See https://github.com/DaemonEngine/Daemon/issues/472
+
+		Don't clear twice if clearing is already enabled globally,
+		which is done in tr_backend instead. */
+		if ( ! r_clear->integer )
+		{
+			glClear( GL_COLOR_BUFFER_BIT );
+		}
+
 		return;
 	}
 
