@@ -910,10 +910,10 @@ void CM_LoadMap(Str::StringRef name)
 	cmLog.Debug( "CM_LoadMap(%s)", name);
 
 	std::string mapFile = "maps/" + name + ".bsp";
-	std::string mapData;
-	try {
-		mapData = FS::PakPath::ReadFile(mapFile);
-	} catch (std::system_error&) {
+
+	std::error_code err;
+	std::string mapData = FS::PakPath::ReadFile(mapFile, err);
+	if (err) {
 		Sys::Drop("Could not load %s", mapFile.c_str());
 	}
 

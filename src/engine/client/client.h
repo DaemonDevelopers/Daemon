@@ -450,8 +450,6 @@ extern cvar_t *cl_consoleFontScaling;
 extern cvar_t *cl_consoleFontKerning;
 extern cvar_t *cl_consoleCommand;
 
-extern cvar_t *cl_logs;
-
 extern cvar_t *cl_cgameSyscallStats;
 
 /**

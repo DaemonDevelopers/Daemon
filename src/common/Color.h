@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define COMMON_COLOR_H_
 
 #include <limits>
+#include <string>
 #include <type_traits>
 
 #include "Compiler.h"

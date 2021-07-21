@@ -1582,31 +1582,39 @@ Cmd::CompletionResult CompleteFilename(Str::StringRef prefix, Str::StringRef roo
 		prefixBase = Path::BaseName(prefix);
 	}
 
-	try {
-		Cmd::CompletionResult out;
-		// ListFiles doesn't return directories for PakPath, so use a recursive
-		// search to get directory names.
-		for (auto x: PakPath::ListFilesRecursive(Path::Build(root, prefixDir))) {
-			std::string ext = Path::Extension(x);
-			size_t slash = x.find('/');
-			if (!allowSubdirs && slash != std::string::npos)
-				continue;
-			else if (allowSubdirs && slash != std::string::npos)
-				x = x.substr(0, slash + 1);
-			if (!extension.empty() && ext != extension && !(allowSubdirs && ext == "/"))
-				continue;
-			std::string result;
-			if (stripExtension)
-				result = Path::Build(prefixDir, Path::StripExtension(x));
-			else
-				result = Path::Build(prefixDir, x);
-			if (Str::IsPrefix(prefix, result))
-				out.emplace_back(result, "");
-		}
-		return out;
-	} catch (std::system_error&) {
+	// ListFiles doesn't return directories for PakPath, so use a recursive
+	// search to get directory names.
+	std::error_code err;
+	DirectoryRange range = ListFilesRecursive(Path::Build(root, prefixDir), err);
+	if (err) {
 		return {};
 	}
+
+	Cmd::CompletionResult out;
+
+	for (auto x: range) {
+		std::string ext = Path::Extension(x);
+		size_t slash = x.find('/');
+		if (!allowSubdirs && slash != std::string::npos) {
+			continue;
+		} else if (allowSubdirs && slash != std::string::npos) {
+			x = x.substr(0, slash + 1);
+		}
+		if (!extension.empty() && ext != extension && !(allowSubdirs && ext == "/")) {
+			continue;
+		}
+		std::string result;
+		if (stripExtension) {
+			result = Path::Build(prefixDir, Path::StripExtension(x));
+		} else {
+			result = Path::Build(prefixDir, x);
+		}
+		if (Str::IsPrefix(prefix, result)) {
+			out.emplace_back(result, "");
+		}
+	}
+
+	return out;
 }
 
 } // namespace PakPath
@@ -2067,24 +2075,29 @@ Cmd::CompletionResult CompleteFilename(Str::StringRef prefix, Str::StringRef roo
 		prefixBase = Path::BaseName(prefix);
 	}
 
-	try {
-		Cmd::CompletionResult out;
-		for (auto& x: HomePath::ListFiles(Path::Build(root, prefixDir))) {
-			std::string ext = Path::Extension(x);
-			if (!extension.empty() && ext != extension && !(allowSubdirs && ext == "/"))
-				continue;
-			std::string result;
-			if (stripExtension)
-				result = Path::Build(prefixDir, Path::StripExtension(x));
-			else
-				result = Path::Build(prefixDir, x);
-			if (Str::IsPrefix(prefix, result))
-				out.emplace_back(result, "");
-		}
-		return out;
-	} catch (std::system_error&) {
+	std::error_code err;
+	DirectoryRange range = HomePath::ListFiles(Path::Build(root, prefixDir), err);
+	if (err) {
 		return {};
 	}
+
+	Cmd::CompletionResult out;
+	for (auto& x: range) {
+		std::string ext = Path::Extension(x);
+		if (!extension.empty() && ext != extension && !(allowSubdirs && ext == "/")) {
+			continue;
+		}
+		std::string result;
+		if (stripExtension) {
+			result = Path::Build(prefixDir, Path::StripExtension(x));
+		} else {
+			result = Path::Build(prefixDir, x);
+		}
+		if (Str::IsPrefix(prefix, result)) {
+			out.emplace_back(result, "");
+		}
+	}
+	return out;
 }
 
 } // namespace HomePath
