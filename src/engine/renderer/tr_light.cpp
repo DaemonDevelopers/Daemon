@@ -406,19 +406,18 @@ void R_SetupLightLocalBounds( trRefLight_t *light )
 			{
 				int    j;
 				vec3_t farCorners[ 4 ];
-				const vec4_t *frustum = (const vec4_t *)light->localFrustum;
 
 				ClearBounds( light->localBounds[ 0 ], light->localBounds[ 1 ] );
 
 				// transform frustum from world space to local space
-				R_CalcFrustumFarCorners( frustum, farCorners );
+				R_CalcFrustumFarCorners( light->localFrustum, farCorners );
 
 				if ( !VectorCompare( light->l.projStart, vec3_origin ) )
 				{
 					vec3_t nearCorners[ 4 ];
 
 					// calculate the vertices defining the top area
-					R_CalcFrustumNearCorners( frustum, nearCorners );
+					R_CalcFrustumNearCorners( light->localFrustum, nearCorners );
 
 					for ( j = 0; j < 4; j++ )
 					{
@@ -429,6 +428,7 @@ void R_SetupLightLocalBounds( trRefLight_t *light )
 				else
 				{
 					vec3_t top;
+					const vec4_t* frustum = (const vec4_t*)light->localFrustum;
 
 					PlanesGetIntersectionPoint( frustum[ FRUSTUM_LEFT ], frustum[ FRUSTUM_RIGHT ], frustum[ FRUSTUM_TOP ], top );
 					AddPointToBounds( top, light->localBounds[ 0 ], light->localBounds[ 1 ] );
@@ -495,16 +495,15 @@ void R_TessLight( const trRefLight_t *light, const Color::Color& color, bool use
 			{
 				vec3_t farCorners[ 4 ];
 				vec4_t quadVerts[ 4 ];
-				const vec4_t *frustum = light->localFrustum;
 
-				R_CalcFrustumFarCorners( frustum, farCorners );
+				R_CalcFrustumFarCorners( light->localFrustum, farCorners );
 
 				if ( !VectorCompare( light->l.projStart, vec3_origin ) )
 				{
 					vec3_t nearCorners[ 4 ];
 
 					// calculate the vertices defining the top area
-					R_CalcFrustumNearCorners( frustum, nearCorners );
+					R_CalcFrustumNearCorners( light->localFrustum, nearCorners );
 
 					// draw outer surfaces
 					for ( j = 0; j < 4; j++ )
@@ -533,6 +532,7 @@ void R_TessLight( const trRefLight_t *light, const Color::Color& color, bool use
 				else
 				{
 					vec3_t top;
+					const vec4_t* frustum = light->localFrustum;
 
 					// no light_start, just use the top vertex (doesn't need to be mirrored)
 					PlanesGetIntersectionPoint( frustum[ FRUSTUM_LEFT ], frustum[ FRUSTUM_RIGHT ], frustum[ FRUSTUM_TOP ], top );

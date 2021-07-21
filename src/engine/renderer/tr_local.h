@@ -3088,8 +3088,20 @@ inline bool checkGLErrors()
 	void           R_RotateLightForViewParms( const trRefLight_t *ent, const viewParms_t *viewParms, orientationr_t *orien );
 
 	void           R_SetupFrustum2( frustum_t frustum, const matrix_t modelViewProjectionMatrix );
-	void           R_CalcFrustumNearCorners(const vec4_t frustum[Util::ordinal(frustumBits_t::FRUSTUM_PLANES)], vec3_t corners[ 4 ] );
-	void           R_CalcFrustumFarCorners( const vec4_t frustum[Util::ordinal(frustumBits_t::FRUSTUM_PLANES)], vec3_t corners[ 4 ] );
+	template<size_t frustumSize>
+	inline
+	typename std::enable_if<(frustumSize >= frustumBits_t::FRUSTUM_NEAR + 1)>::type
+	R_CalcFrustumNearCorners( const vec4_t(&frustum)[frustumSize], vec3_t (&corners)[ 4 ] ) {
+		extern void R_CalcFrustumNearCornersUnsafe( const vec4_t frustum[frustumBits_t::FRUSTUM_NEAR + 1], vec3_t (&corners)[ 4 ] );
+		R_CalcFrustumNearCornersUnsafe( frustum, corners );
+	}
+	template<size_t frustumSize>
+	inline
+	typename std::enable_if<(frustumSize >= frustumBits_t::FRUSTUM_FAR + 1)>::type
+	R_CalcFrustumFarCorners( const vec4_t(&frustum)[frustumSize], vec3_t (&corners)[ 4 ] ) {
+		extern void R_CalcFrustumFarCornersUnsafe( const vec4_t frustum[frustumBits_t::FRUSTUM_FAR + 1], vec3_t (&corners)[ 4 ] );
+		R_CalcFrustumFarCornersUnsafe( frustum, corners );
+	}
 
 	/* Tangent/normal vector calculation functions */
 	void R_CalcFaceNormal( vec3_t normal, const vec3_t v0,

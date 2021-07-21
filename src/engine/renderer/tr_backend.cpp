@@ -1513,7 +1513,8 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 				matrix_t rotationMatrix, transformMatrix, viewMatrix, projectionMatrix, viewProjectionMatrix;
 				matrix_t cropMatrix;
 				vec4_t   splitFrustum[ 6 ];
-				vec3_t   splitFrustumCorners[ 8 ];
+				vec3_t   splitFrustumNearCorners[ 4 ];
+				vec3_t   splitFrustumFarCorners[ 4 ];
 				vec3_t   splitFrustumBounds[ 2 ];
 				vec3_t   splitFrustumClipBounds[ 2 ];
 				int      numCasters;
@@ -1582,8 +1583,8 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 						splitFrustum[ j ][ 3 ] = backEnd.viewParms.frustums[ 1 + splitFrustumIndex ][ j ].dist;
 					}
 
-					R_CalcFrustumNearCorners( splitFrustum, splitFrustumCorners );
-					R_CalcFrustumFarCorners( splitFrustum, splitFrustumCorners + 4 );
+					R_CalcFrustumNearCorners( splitFrustum, splitFrustumNearCorners );
+					R_CalcFrustumFarCorners( splitFrustum, splitFrustumFarCorners );
 
 					if ( r_logFile->integer )
 					{
@@ -1603,24 +1604,29 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 						GLimp_LogComment( va( "split frustum %i: near = %5.3f, far = %5.3f\n", splitFrustumIndex, zNear, zFar ) );
 						GLimp_LogComment( va( "pyramid nearCorners\n" ) );
 
-						for ( j = 0; j < 4; j++ )
+						for ( auto nearCorner : splitFrustumNearCorners )
 						{
-							GLimp_LogComment( va( "(%5.3f, %5.3f, %5.3f)\n", splitFrustumCorners[ j ][ 0 ], splitFrustumCorners[ j ][ 1 ], splitFrustumCorners[ j ][ 2 ] ) );
+							GLimp_LogComment( va( "(%5.3f, %5.3f, %5.3f)\n", nearCorner[ 0 ], nearCorner[ 1 ], nearCorner[ 2 ] ) );
 						}
 
 						GLimp_LogComment( va( "pyramid farCorners\n" ) );
 
-						for ( j = 4; j < 8; j++ )
+						for ( auto farCorner : splitFrustumFarCorners )
 						{
-							GLimp_LogComment( va( "(%5.3f, %5.3f, %5.3f)\n", splitFrustumCorners[ j ][ 0 ], splitFrustumCorners[ j ][ 1 ], splitFrustumCorners[ j ][ 2 ] ) );
+							GLimp_LogComment( va( "(%5.3f, %5.3f, %5.3f)\n", farCorner[ 0 ], farCorner[ 1 ], farCorner[ 2 ] ) );
 						}
 					}
 
 					ClearBounds( splitFrustumBounds[ 0 ], splitFrustumBounds[ 1 ] );
 
-					for ( j = 0; j < 8; j++ )
+					for ( auto nearCorner : splitFrustumNearCorners )
 					{
-						AddPointToBounds( splitFrustumCorners[ j ], splitFrustumBounds[ 0 ], splitFrustumBounds[ 1 ] );
+						AddPointToBounds( nearCorner, splitFrustumBounds[ 0 ], splitFrustumBounds[ 1 ] );
+					}
+
+					for ( auto farCorner : splitFrustumFarCorners )
+					{
+						AddPointToBounds( farCorner, splitFrustumBounds[ 0 ], splitFrustumBounds[ 1 ] );
 					}
 
 					//
@@ -1630,9 +1636,8 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 					// find the bounding box of the current split in the light's view space
 					ClearBounds( cropBounds[ 0 ], cropBounds[ 1 ] );
 
-					for ( j = 0; j < 8; j++ )
-					{
-						VectorCopy( splitFrustumCorners[ j ], point );
+					const auto pointsToViewBounds = [&]( vec_t *c ) {
+						VectorCopy( c, point );
 						point[ 3 ] = 1;
 						MatrixTransform4( light->viewMatrix, point, transf );
 						transf[ 0 ] /= transf[ 3 ];
@@ -1640,6 +1645,16 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 						transf[ 2 ] /= transf[ 3 ];
 
 						AddPointToBounds( transf, cropBounds[ 0 ], cropBounds[ 1 ] );
+					};
+
+					for ( auto nearCorner : splitFrustumNearCorners )
+					{
+						pointsToViewBounds( nearCorner );
+					}
+
+					for ( auto farCorner : splitFrustumFarCorners )
+					{
+						pointsToViewBounds( farCorner );
 					}
 
 					MatrixOrthogonalProjectionRH( projectionMatrix, cropBounds[ 0 ][ 0 ], cropBounds[ 1 ][ 0 ], cropBounds[ 0 ][ 1 ], cropBounds[ 1 ][ 1 ], -cropBounds[ 1 ][ 2 ], -cropBounds[ 0 ][ 2 ] );
@@ -1652,9 +1667,8 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 					// find the bounding box of the current split in the light's clip space
 					ClearBounds( splitFrustumClipBounds[ 0 ], splitFrustumClipBounds[ 1 ] );
 
-					for ( j = 0; j < 8; j++ )
-					{
-						VectorCopy( splitFrustumCorners[ j ], point );
+					const auto pointsToViewProjectionBounds = [&]( vec_t* c ) {
+						VectorCopy( c, point );
 						point[ 3 ] = 1;
 
 						MatrixTransform4( viewProjectionMatrix, point, transf );
@@ -1663,6 +1677,16 @@ static void RB_SetupLightForShadowing( trRefLight_t *light, int index,
 						transf[ 2 ] /= transf[ 3 ];
 
 						AddPointToBounds( transf, splitFrustumClipBounds[ 0 ], splitFrustumClipBounds[ 1 ] );
+					};
+
+					for ( auto nearCorner : splitFrustumNearCorners )
+					{
+						pointsToViewProjectionBounds( nearCorner );
+					}
+
+					for ( auto farCorner : splitFrustumFarCorners )
+					{
+						pointsToViewProjectionBounds( farCorner );
 					}
 
 					if ( r_logFile->integer )

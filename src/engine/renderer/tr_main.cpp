@@ -1086,7 +1086,7 @@ void R_SetupFrustum2( frustum_t frustum, const matrix_t mvp )
 
 // *INDENT-ON*
 
-void R_CalcFrustumNearCorners( const vec4_t frustum[ FRUSTUM_PLANES ], vec3_t corners[ 4 ] )
+void R_CalcFrustumNearCornersUnsafe( const vec4_t frustum[ FRUSTUM_NEAR + 1 ], vec3_t (&corners)[ 4 ] )
 {
 	PlanesGetIntersectionPoint( frustum[ FRUSTUM_LEFT ], frustum[ FRUSTUM_TOP ], frustum[ FRUSTUM_NEAR ], corners[ 0 ] );
 	PlanesGetIntersectionPoint( frustum[ FRUSTUM_RIGHT ], frustum[ FRUSTUM_TOP ], frustum[ FRUSTUM_NEAR ], corners[ 1 ] );
@@ -1094,7 +1094,7 @@ void R_CalcFrustumNearCorners( const vec4_t frustum[ FRUSTUM_PLANES ], vec3_t co
 	PlanesGetIntersectionPoint( frustum[ FRUSTUM_LEFT ], frustum[ FRUSTUM_BOTTOM ], frustum[ FRUSTUM_NEAR ], corners[ 3 ] );
 }
 
-void R_CalcFrustumFarCorners( const vec4_t frustum[ FRUSTUM_PLANES ], vec3_t corners[ 4 ] )
+void R_CalcFrustumFarCornersUnsafe( const vec4_t frustum[ FRUSTUM_FAR + 1 ], vec3_t (&corners)[ 4 ] )
 {
 	PlanesGetIntersectionPoint( frustum[ FRUSTUM_LEFT ], frustum[ FRUSTUM_TOP ], frustum[ FRUSTUM_FAR ], corners[ 0 ] );
 	PlanesGetIntersectionPoint( frustum[ FRUSTUM_RIGHT ], frustum[ FRUSTUM_TOP ], frustum[ FRUSTUM_FAR ], corners[ 1 ] );
