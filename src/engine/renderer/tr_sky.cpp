@@ -310,15 +310,20 @@ static void ClipSkyPolygon( int nump, vec3_t vecs, int stage )
 ClearSkyBox
 ==============
 */
-static void ClearSkyBox()
+inline void ClearSkyBox()
 {
-	int i;
+	static const float mins[ 2 ][ 6 ] = {
+		{ 9999, 9999, 9999, 9999, 9999, 9999 },
+		{ 9999, 9999, 9999, 9999, 9999, 9999 }
+	};
 
-	for ( i = 0; i < 6; i++ )
-	{
-		sky_mins[ 0 ][ i ] = sky_mins[ 1 ][ i ] = 9999;
-		sky_maxs[ 0 ][ i ] = sky_maxs[ 1 ][ i ] = -9999;
-	}
+	static const float maxs[ 2 ][ 6 ] = {
+		{ -9999, -9999, -9999, -9999, -9999, -9999 },
+		{ -9999, -9999, -9999, -9999, -9999, -9999 }
+	};
+
+	memcpy( sky_mins, mins, sizeof( mins ) );
+	memcpy( sky_maxs, maxs, sizeof( maxs ) );
 }
 
 /*
@@ -376,7 +381,7 @@ static void MakeSkyVec( float s, float t, int axis, vec2_t outSt, vec4_t outXYZ 
 	int        j, k;
 	float      boxSize;
 
-	boxSize = backEnd.viewParms.zFar / 1.75F; // div sqrt(3)
+	boxSize = backEnd.viewParms.zFar / M_ROOT3;
 	b[ 0 ] = s * boxSize;
 	b[ 1 ] = t * boxSize;
 	b[ 2 ] = boxSize;
@@ -584,19 +589,13 @@ static void FillCloudBox( int stage )
 {
 	int i;
 
-	for ( i = 0; i < 6; i++ )
+	// Iterate from 0 to 5 and not from 0 to 6,
+	// we still don't want to draw the bottom, even if fullClouds.
+	for ( i = 0; i < 5; i++ )
 	{
 		int   sky_mins_subd[ 2 ], sky_maxs_subd[ 2 ];
 		int   s, t;
 		const int MIN_T{-HALF_SKY_SUBDIVISIONS};
-
-		{
-			// still don't want to draw the bottom, even if fullClouds
-			if ( i == 5 )
-			{
-				continue;
-			}
-		}
 
 		sky_mins[ 0 ][ i ] = floor( sky_mins[ 0 ][ i ] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
 		sky_mins[ 1 ][ i ] = floor( sky_mins[ 1 ][ i ] * HALF_SKY_SUBDIVISIONS ) / HALF_SKY_SUBDIVISIONS;
