@@ -580,6 +580,37 @@ static void Init(int argc, char** argv)
 
 	// Enable S3TC on Mesa even if libtxc-dxtn is not available
 	setenv("force_s3tc_enable", "true", true);
+
+	/* Enable 2.1 GL on Intel GMA Gen 3 on Linux Mesa driver.
+
+	The Mesa i915 driver for GMA Gen 3 disabled GL 2.1 on such
+	hardware to force Google Chrome to use its CPU fallback
+	that was faster but we don't implement such fallback.
+	See https://gitlab.freedesktop.org/mesa/mesa/-/commit/a1891da7c865c80d95c450abfc0d2bc49db5f678
+
+	Only Mesa i915 on Linux supports GL 2.1 for GMA Gen 3,
+	so there is no similar tweak being required for Windows
+	and macOS.
+
+	Mesa i915 and macOS also supports GL 2.1 on GMA Gen 4
+	while windows drivers don't but those tweaks are not
+	required as the related features are enabled by default.
+
+	First Intel hardware range expected to have drivers
+	supporting GL 2.1 on Windows is GMA Gen 5.
+
+	Enabling those options would at least make the engine
+	properly report missing extension instead of missing
+	GL version, for example the Intel GMA 3100 G33 (Gen 3)
+	will report missing GL_ARB_half_float_vertex extension
+	instead of missing OpenGL 2.1 version.
+
+	The GMA 3150 is known to have wider OpenGL support than
+	GMA 3100, for example it has OpenGL version similar to
+	GMA 4 on Windows while being a GMA 3 so the list of
+	available GL extensions may be larger. */
+	setenv("fragment_shader", "true", true);
+	setenv("stub_occlusion_query", "true", true);
 #endif
 
 	// Initialize the console

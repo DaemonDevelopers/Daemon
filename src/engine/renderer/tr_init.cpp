@@ -933,18 +933,25 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 		Log::Debug("GL_MAX_RENDERBUFFER_SIZE: %d", glConfig2.maxRenderbufferSize );
 		Log::Debug("GL_MAX_COLOR_ATTACHMENTS: %d", glConfig2.maxColorAttachments );
 
-		Log::Debug("\nPIXELFORMAT: color(%d-bits) Z(%d-bit) stencil(%d-bits)", glConfig.colorBits,
-		           glConfig.depthBits, glConfig.stencilBits );
-		Log::Debug("MODE: %d, %d x %d %s hz:", r_mode->integer, glConfig.vidWidth, glConfig.vidHeight,
-		           fsstrings[ r_fullscreen->integer == 1 ] );
+		Log::Debug("PIXELFORMAT: color(%d-bits) Z(%d-bit) stencil(%d-bits)", glConfig.colorBits, glConfig.depthBits, glConfig.stencilBits );
 
-		if ( glConfig.displayFrequency )
 		{
-			Log::Debug("%d", glConfig.displayFrequency );
-		}
-		else
-		{
-			Log::Debug("N/A" );
+			std::string out;
+			if ( glConfig.displayFrequency )
+			{
+				out = Str::Format("%d", glConfig.displayFrequency );
+			}
+			else
+			{
+				out = "N/A";
+			}
+
+			Log::Debug("MODE: %d, %d x %d %s hz: %s",
+				r_mode->integer,
+				glConfig.vidWidth, glConfig.vidHeight,
+				fsstrings[ r_fullscreen->integer == 1 ],
+				out
+				);
 		}
 
 		Log::Debug("texturemode: %s", r_textureMode->string );
@@ -965,11 +972,11 @@ ScreenshotCmd screenshotPNGRegistration("screenshotPNG", ssFormat_t::SSF_PNG, "p
 
 			if ( profile == GL_CONTEXT_CORE_PROFILE_BIT )
 			{
-				Log::Debug("%sHaving a core profile", Color::ToString( Color::Green ) );
+				Log::Notice("%sHaving a core profile", Color::ToString( Color::Green ) );
 			}
 			else
 			{
-				Log::Debug("%sHaving a compatibility profile", Color::ToString( Color::Red ) );
+				Log::Notice("%sHaving a compatibility profile", Color::ToString( Color::Red ) );
 			}
 
 			// check if context is forward compatible
